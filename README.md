@@ -10,7 +10,7 @@ user interface.
 will log the `name` every time it changes.
 * <a href="#inference-rules">Inference rules</a> similar to  <a href="https://www.drools.org/">Drools</a> or 
 <a href="https://www.npmjs.com/package/rools">Rools</a> and modeled after the `Promise` paradigm.
-* And, no reactive library would be complete without a spreadsheet like <a href="#sheet">Sheet</a>.
+* <a href="#sheet">Spreadsheets</a> ... no reactive library would be complete without them.
 
 The `Sheet` is provided as a separate file and is not included in the 4K size stated above.
 
