@@ -30,7 +30,7 @@ Transpiling and minifying is left to the developer using the library.
 
 ## Example Use
 
-There are examples in the <a href="./examples" target="_top">examples</a> directory and sub-directories. Most examples 
+There are examples in the <a href="./examples" target="_tab">examples</a> directory and sub-directories. Most examples 
 can be run by both loading an HTML file and running the command `node examplefilename.js`. The HTML files just load the 
 same JavaScript files that are fed to NodeJS on the command line.
 
@@ -609,8 +609,8 @@ any level in a sheet's data hierarchy and any legal property names can be used f
 hierarchy. Any type of data can be stored in cells. There is no support for selecting, cutting, pasting, etc.; although, 
 these could be provided by a wrapper.
 
-The code below can be <a href="./examples/sheets/basic.html" target=_top>run</a> or <a href="./examples/sheets/basic.js">viewed</a>
-in the <a href="./examples/index.htm" target=_top>examples></a> directory.
+The code below can be <a href="./examples/sheets/basic.html" target=_tab>run</a> or <a href="./examples/sheets/basic.js">viewed</a>
+in the <a href="./examples/index.htm" target=_tab>examples></a> directory.
 
 ```javascript
 import {Sheet} from "../Sheet.js";
