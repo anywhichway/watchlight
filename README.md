@@ -1,4 +1,4 @@
-# v1.0.1b (BETA)
+# v1.0.2b (BETA)
 
 A light weight (11K minified, 4K gzipped), comprehensive, reactive framework for business logic.
 
@@ -583,6 +583,7 @@ message will not be written.
 The second option is to allow comparing with other objects:
 
 ```javascript
+const joe = assert(new Person({name:"joe",age:27}));
 joe.when(function({bound,partner}) {
     return partner.name!==bound.name
 },{partner:Person})
@@ -597,9 +598,11 @@ This rule will match Joe with all possible partners.
 
 ### Inference Rules Examples
 
-<a href="./examples/rules/fibonacci.html">Fibonacci sequence generation</a>.
+<a href="./examples/rules/fibonacci.html" target=_tab>Fibonacci sequence generation</a> 
+<a href="./examples/rules/fibonacci.js" target=_tab>source</a>.
 
-<a href="./examples/rules/pairs.html">Pair matching beyond the examples in this document.</a>.
+<a href="./examples/rules/pairs.html" target=_tab>Pair matching beyond the examples in this document.</a>
+<a href="./examples/rules/pairs.js" target=_tab>source</a>.
 
 ## Sheet
 
@@ -644,7 +647,7 @@ setTimeout(() => { // let recalculation settle out
 ```
 
 Cells in a `Sheet` have a function `withFormat` that can take either a string or a function as an argument. If a string,
-then it should be an un-interpolated string template literal that access `this.valueOf()`. If a function, it will
+then it should be an un-interpolated string template literal that accesses `this.valueOf()`. If a function, it will
 get the cell as its `this` value, so it can call `this.valueOf()`. It should return a string.
 
 During this early release, there are only basic functions on a `Sheet`, you may need to add more as a first argument:
@@ -666,6 +669,8 @@ Most functions will automatically convert cell references to iterables that are 
 
 ### Logical and Info Sheet Functions
 
+#### count(...numbers)
+#### countblank(...any)
 #### iff(test, value1, value2) 
 #### isboolean(value)
 #### isboolean(value) 
@@ -680,19 +685,15 @@ Most functions will automatically convert cell references to iterables that are 
 
 #### average(...numbers)
 
-#### count(...numbers)
+#### exp(number,power)
 
-#### countblank(...any)
+#### log10(number)
 
-### exp(number,power)
+#### max(...numbers|strings)
 
-### log10(number)
+#### median(...numbers)
 
-### max(...numbers|strings)
-
-### median(...numbers)
-
-### min(...numbers|strings)
+#### min(...numbers|strings)
 
 #### product(....numbers)
 
@@ -755,7 +756,7 @@ Returns an array of values from the object based on the keys between and includi
 
 ## Other Examples
 
-Look at the <a href="./examples/kitchensink.html">kitchen sink</a>.
+Look at the <a href="./examples/kitchensink.html" target=_tab>kitchen sink</a> <a href="./examples/kitchensink.js" target=_tab>source</a>.
 
 ## License
 
