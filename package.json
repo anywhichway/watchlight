@@ -1,0 +1,34 @@
+{
+  "name": "watchlight",
+  "version": "1.0.1b",
+  "description": "A light weight, comprehensive, reactive framework for business logic.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anywhichway/watchlight.git"
+  },
+  "keywords": [
+    "reactive",
+    "observer",
+    "addEventListener",
+    "drools",
+    "nools",
+    "clips",
+    "ops5",
+    "rules",
+    "bacon",
+    "spreadsheet",
+    "hypercalc",
+    "excel"
+  ],
+  "author": "Simon Y. Blackwell",
+  "license": "AGPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/anywhichway/watchlight/issues"
+  },
+  "homepage": "https://github.com/anywhichway/watchlight#readme"
+}
