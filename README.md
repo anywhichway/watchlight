@@ -1,4 +1,4 @@
-# v1.0.2b (BETA)
+# v1.0.3b (BETA)
 
 A light weight (11K minified, 4K gzipped), comprehensive, reactive framework for business logic.
 
@@ -246,6 +246,11 @@ joe owns the world.
 Welcome to the world joe
 Hello joe
 ```
+
+#### observer.withOptions({onerror})
+
+Observer error handling defaults to re-throwing errors thrown by wrapped functions. This can be changed to swallow the
+error by passing `{onerror:()=>{}}` or use the error as the value by passing `{onerror:(e) => e}`.
 
 #### any unobserve(aFunction:function)
 
@@ -598,10 +603,10 @@ This rule will match Joe with all possible partners.
 
 ### Inference Rules Examples
 
-<a href="./examples/rules/fibonacci.html" target=_tab>Fibonacci sequence generation</a> 
+<a href="./examples/rules/fibonacci.html" target=_tab>Fibonacci sequence generation</a>:  
 <a href="./examples/rules/fibonacci.js" target=_tab>source</a>.
 
-<a href="./examples/rules/pairs.html" target=_tab>Pair matching beyond the examples in this document.</a>
+<a href="./examples/rules/pairs.html" target=_tab>Pair matching beyond the examples in this document.</a>: 
 <a href="./examples/rules/pairs.js" target=_tab>source</a>.
 
 ## Sheet
@@ -612,6 +617,17 @@ any level in a sheet's data hierarchy and any legal property names can be used f
 hierarchy. Any type of data can be stored in cells. There is no support for selecting, cutting, pasting, etc.; although, 
 these could be provided by a wrapper.
 
+### Dimension and Cell
+
+`Dimension` is a psuedo-class. You can't check `instanceof`. Any time an undefined property or sub-property is
+accessed on a `Sheet` a `Dimension` is created. If a `Dimension` is directly assigned a value or a function, it is
+converted into an instance of the psuedo-class `Cell`. `Cells` only exist at leaves. Existing `Dimensions` can
+be overridden and converted into a `Cell` by direct assignment.
+
+Cells in a `Sheet` have a function `withFormat` that can take either a string or a function as an argument. If a string,
+then it should be an un-interpolated string template literal that accesses `this.valueOf()`. If a function, it will
+get the cell as its `this` value, so it can call `this.valueOf()`. It should return a string.
+
 The code below can be <a href="./examples/sheets/basic.html" target=_tab>run</a> or <a href="./examples/sheets/basic.js">viewed</a>
 in the <a href="./examples/index.htm" target=_tab>examples></a> directory.
 
@@ -619,7 +635,8 @@ in the <a href="./examples/index.htm" target=_tab>examples></a> directory.
 import {Sheet} from "../Sheet.js";
 
 const sheet = Sheet();
-sheet.A[1] = 1; // dimensions and cells are created automatically
+sheet.A[0]; // no assignment is made, so sheet.A[0] will automatically be a Dimension when accessed
+sheet.A[1] = 1; // sheet.A[1] is a Cell. Dimensions and Cells are created automatically
 sheet.A[2] = 1;
 sheet.A[3] = () => A[1] + A[2]; // Note, there is no need to include sheet; watchlight manages the resolution
 sheet.A[3].withFormat("$${this.valueOf().toFixed(2)}");
@@ -646,10 +663,6 @@ setTimeout(() => { // let recalculation settle out
 })
 ```
 
-Cells in a `Sheet` have a function `withFormat` that can take either a string or a function as an argument. If a string,
-then it should be an un-interpolated string template literal that accesses `this.valueOf()`. If a function, it will
-get the cell as its `this` value, so it can call `this.valueOf()`. It should return a string.
-
 During this early release, there are only basic functions on a `Sheet`, you may need to add more as a first argument:
 
 ```javascript
@@ -667,61 +680,70 @@ Sheet functions behave like their similarly named functions in MS Excel and Goog
 
 Most functions will automatically convert cell references to iterables that are spread into arguments when necessary.
 
+Some functions require a cell or a value for an argument and not a `Dimension`. If you call a function that can't take
+a `Dimension` with a `Dimension`, you will get an error similar to this:
+
+```shell
+TypeError: isnumber(tab1.A.3) 'tab1.A.3' is a Dimension not a value or cell
+```
+
 ### Logical and Info Sheet Functions
 
-#### count(...numbers)
-#### countblank(...any)
+#### count(values:array|Dimension,{start:number|string,end:number|string})
+#### counta(values:array|Dimension,{start:number|string,end:number|string})
 #### iff(test, value1, value2) 
-#### isboolean(value)
+#### isdimension(value)
+#### isblank(value)
 #### isboolean(value) 
-#### isundefined(value) 
+#### isempty(value)
 #### islogical(value) 
 #### isnumber(value) 
 #### isobject(value) 
 #### isstring(value) 
+#### isundefined(value)
 #### len(value)
 
 ### Math Sheet Functions
 
-#### average(...numbers)
+#### average(values:array|Dimension,{start:number|string,end:number|string})
 
 #### exp(number,power)
 
-#### log10(number)
+#### log10(value:number)
 
-#### max(...numbers|strings)
+#### max(values:array|Dimension,{start:number|string,end:number|string})
 
-#### median(...numbers)
+#### median(numbers:Array<number>)
 
-#### min(...numbers|strings)
+#### min(values:array|Dimension,{start:number|string,end:number|string})
 
-#### product(....numbers)
+#### product(values:array|Dimension,{start:number|string,end:number|string})
 
-#### stdev(...numbers)
+#### stdev(values:array|Dimension,{start:number|string,end:number|string})
 
-#### sum(....numbers)
+#### sum(values:array|Dimension,{start:number|string,end:number|string})
 
-#### variance(...numbers)
+#### variance(values:array|Dimension,{start:number|string,end:number|string})
 
-#### zscores(...numbers)
+#### zscores(values:array|Dimension,{start:number|string,end:number|string})
 
 Returns Array.
 
 ### Trigonometry Sheet Functions
 
-#### acos(number)
-#### acosh(number) 
-#### asin(number)
-#### asinh(number)
-#### atan(number) 
-#### atan2(number) 
-#### cos(number) 
-#### cosh(number) 
+#### acos(value:number)
+#### acosh(value:number) 
+#### asin(value:number)
+#### asinh(value:number)
+#### atan(value:number) 
+#### atan2(value:number) 
+#### cos(value:number) 
+#### cosh(value:number) 
 #### pi() 
 #### rand() 
-#### sin(number)
-#### tan(number) 
-#### tanh(number) 
+#### sin(value:number)
+#### tan(value:number) 
+#### tanh(value:number) 
 
 ### Coercion Sheet Functions
 
@@ -729,7 +751,7 @@ Returns Array.
 
 #### float(value:string|number)
 
-#### lower(string) 
+#### lower(value:string) 
 
 #### numbers(source:object,start:number|string,end:number|string)
 
@@ -737,18 +759,18 @@ Returns Array.
 
 Returns an array of all numbers from the object based on the keys between and including `start` and `end`.
 
-#### numbersa(source:object,start:number|string,end:number|string)
+#### numbersa(values:array|Dimension,{start:number|string,end:number|string})
 
 `source` can be an Array or a `Sheet` dimension. If `end` is less that `start` the return value is reversed.
 
 Returns an array of all values coercible into numbers from the object based on the keys between and including 
 `start` and `end`. Strings are parsed as floats and booleans are converted to 1s and 0s.
 
-#### upper(string)
+#### upper(value:string)
 
 #### value(data:any)
 
-#### values(source:object,start:number|string,end:number|string)
+#### values(values:array|Dimension,{start:number|string,end:number|string})
 
 `source` can be an Array or a `Sheet` dimension. If `end` is less that `start` the return value is reversed.
 
@@ -756,7 +778,8 @@ Returns an array of values from the object based on the keys between and includi
 
 ## Other Examples
 
-Look at the <a href="./examples/kitchensink.html" target=_tab>kitchen sink</a> <a href="./examples/kitchensink.js" target=_tab>source</a>.
+Look at the <a href="./examples/kitchensink.html" target=_tab>kitchen sink</a> or its 
+<a href="./examples/kitchensink.js" target=_tab>source</a>.
 
 ## License
 
@@ -769,6 +792,11 @@ or
 A custom commercial license. Contact syblackwell@anywhichway.com.
 
 ## Change History (Reverse Chronological Order)
+
+2022-03-23 v1.0.3b Unit tests, fixed bug in proxy property lookup that was creating extra reactive sub-objects when
+value was false. Minor rule performance improvement. Added `observer.withOptions`.
+
+2022-03-22 v1.0.2b Documentation updates.
 
 2022-03-22 v1.0.1b Documentation updates, added Partial and Sheet
 

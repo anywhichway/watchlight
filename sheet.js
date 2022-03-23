@@ -1,47 +1,74 @@
 import {observer, reactive} from "./index.js";
 
+const hasKeys = (value) => {
+    if(value && typeof(value)==="object") for(const key in value) return true
+    return false;
+}
+const isDimension = (value) => {
+    if(value && typeof(value)==="object" && typeof(value.isDimension)==="function") {
+        return value.isDimension();
+    }
+    return false;
+}
+
 const FUNCTIONS = {
     // Logical and Info
+    count(values) {
+        return this.numbers(values).length;
+    },
+    counta(values) {
+        return this.values(values).length;
+    },
     iff(test, value1, value2) {
         return !!test ? value1 : value2;
+    },
+    isblank(value) {
+        if(this.isdimension(value)) return !hasKeys(value);
+        return value==null;
     },
     isboolean(value) {
         return typeof (value) === "boolean";
     },
     isdimension(value) {
-        if(value && typeof(value)==="object" && typeof(value.isDimension)==="function") {
-            return value.isDimension();
-        }
-        return false;
+        return isDimension(value);
+    },
+    isempty(value) {
+        return this.isblank(value) || value===""
     },
     isundefined(value) {
         return typeof (value) === "undefined";
     },
     islogical(value) {
-        return typeof (value) === "boolean";
+        return this.isboolean(value);
     },
     isnumber(value) {
         return typeof (value) === "number";
     },
     isobject(value) {
-        return value && typeof (value) === "object";
+        return !!(value && typeof (value) === "object" && !this.isdimension(value));
     },
     isstring(value) {
         return typeof (value) === "string";
     },
     len(value) {
-        if(value && value.length) return value.length;
-        if(value && value.count) return typeof(value.count)==="function" ? value.count() : value.count;
+        if(value) {
+            if(value.length!==undefined) {
+                const type = typeof(value.length);
+                if(type==="function") return value.length();
+                if(type==="number") return value.length;
+            }
+            if(value.count!==undefined) {
+                const type = typeof(value.count);
+                if(type==="function") return value.count();
+                if(type==="number") return value.count;
+            }
+        }
+        throw new TypeError(`len:${value} does not have a length or count property that resolves to a number.`)
     },
     // Math
-    average(...values) {
-        return this.sum(...values) / this.count(...values);
-    },
-    count(...values) {
-        return this.numbers(...values).length;
-    },
-    countblank(...values) {
-        return this.values(...values).length;
+    average(values,{start,end,matrix}={}) {
+        values = this.numbers(values,{start,end,matrix})
+        return this.sum(values) / values.length;
     },
     exp(number,power) {
         return Math.pow(number,power);
@@ -49,39 +76,39 @@ const FUNCTIONS = {
     log10(number) {
         return Math.log10(number);
     },
-    max(...values) {
-        return this.numbers(...values).reduce((max, value) => typeof (value) === "number" ? Math.max(max, value) : max, -Infinity)
+    max(values,{start,end,matrix}={}) {
+        return this.numbers(values,{start,end,matrix}).reduce((max, value) => typeof (value) === "number" ? Math.max(max, value) : max, -Infinity)
     },
-    mean(...values) {
-        return this.average(...values);
+    mean(values,{start,end,matrix}={}) {
+        return this.average(values,{start,end,matrix});
     },
-    median(...values) {
-        values = this.numbers(...values);
+    median(values,{start,end,matrix}={}) {
+        values = this.numbers(values,{start,end,matrix});
         values = values.sort((a, b) => a - b);
         const mid = values.length / 2;
         return mid % 1 ? values[mid - 0.5] : (values[mid - 1] + values[mid]) / 2;
     },
-    min(...values) {
-        return this.numbers(...values).reduce((min, value) => typeof (value) === "number" ? Math.min(min, value) : min, Infinity)
+    min(values,{start,end,matrix}={}) {
+        return this.numbers(values,{start,end,matrix}).reduce((min, value) => typeof (value) === "number" ? Math.min(min, value) : min, Infinity)
     },
-    product(...values) {
-        return this.numbers(...values).reduce((product, value) => product *= value, 1)
+    product(values,{start,end,matrix}={}) {
+        return this.numbers(values,{start,end,matrix}).reduce((product, value) => product *= value, 1)
     },
-    stdev(...values) {
-        return Math.sqrt(this.variance(...values));
+    stdev(values,{start,end,matrix}={}) {
+        return Math.sqrt(this.variance(values,{start,end,matrix}));
     },
-    sum(...values) {
-        return this.numbers(...values).reduce((sum, value) => sum += value, 0)
+    sum(values,{start,end,matrix}={}) {
+        return this.numbers(values,{start,end,matrix}).reduce((sum, value) => sum += value, 0)
     },
-    variance(...values) {
-        values = this.numbers(...values);
-        const avg = this.average(...values);
-        return this.average(...values.map((num) => Math.pow(num - avg, 2)));
+    variance(values,{start,end,matrix}={}) {
+        values = this.numbers(values,{start,end,matrix});
+        const avg = this.average(values);
+        return this.average(values.map((num) => Math.pow(num - avg, 2)));
     },
-    zscores(...values) {
-        values = this.numbers(...values);
-        const mean = this.average(...values),
-            stdev = this.stdev(...values);
+    zscores(values,{start,end,matrix}={}) {
+        values = this.numbers(values,{start,end,matrix});
+        const mean = this.average(values),
+            stdev = this.stdev(values);
         return values.map((num) => (num - mean) / stdev);
     },
     // Trig
@@ -134,21 +161,21 @@ const FUNCTIONS = {
     lower(value) {
         return (value+"").toLowerCase();
     },
-    numbers(data,start,end) {
-        const values = this.values(data,start,end);
+    numbers(data,{start,end,matrix}={}) {
+        const values = this.values(data,{start,end,matrix});
         return values.reduce((numbers,value) => {
-            if(Array.isArray(value)) return numbers.concat(...this.numbers(...value))
-            if(this.isdimension(value)) return this.numbers(...Object.values(value));
+            if(Array.isArray(value)) return numbers.concat(...this.numbers(value))
+            if(this.isdimension(value)) return this.numbers(Object.values(value));
             if(value && typeof(value.valueOf)==="function") value = value.valueOf();
             if(typeof(value)==="number") numbers.push(value)
             return numbers;
         },[])
     },
-    numbersa(data,start,end) {
+    numbersa(data,{start,end,matrix}={}) {
         const values = this.values(data,start,end);
         return values.reduce((numbers,value) => {
-            if(Array.isArray(value)) return numbers.concat(...this.numbers(...value))
-            if(this.isdimension(value)) return this.numbers(...Object.values(value));
+            if(Array.isArray(value)) return numbers.concat(...this.numbersa(...value))
+            if(this.isdimension(value)) return this.numbersa(Object.values(value));
             if(value && typeof(value.valueOf)==="function") value = value.valueOf();
             if(typeof(value)==="string") value = parseFloat(value);
             if(typeof(value)==="boolean") value = value ? 1 : 0;
@@ -162,12 +189,12 @@ const FUNCTIONS = {
     value(data) {
         return parseFloat(data);
     },
-    values(data, start, end) {
+    values(data, {start, end}={}) {
         if(!data || (!Array.isArray(data) && !this.isdimension(data))) return [];
         if(!start && end===undefined) return Object.values(data);
         const reverse = end !== undefined && start > end && end > 0,
-            numbers = typeof (start) === "number",
-            result = [];
+            numbers = typeof (start) === "number";
+        let result = [];
         if (reverse) {
             const temp = end;
             start = end;
@@ -178,7 +205,15 @@ const FUNCTIONS = {
                 key = parseInt(key);
                 if (isNaN(key)) continue;
             }
-            if (key >= start && (!end || key <= end)) result.push(data[key]);
+            if (key >= start && (!end || key <= end)) {
+                const value = data[key];
+                if(value===undefined) continue
+                if(this.isdimension(value)) {
+                    result = result.concat(...this.values(value))
+                } else {
+                    result.push(value);
+                }
+            }
             if (numbers && key >= end) break;
         }
         return reverse ? result.reverse() : result;
@@ -204,18 +239,56 @@ const enhanceObserver = (o,valueOf) => {
     return o;
 }
 
-const Sheet = (functions = {}, root) => {
+const isError = (value) => !!(value && typeof(value)==="object" && value instanceof Error);
+
+const DIMENSIONFUNCTIONS = {
+    isdimension: true,
+    isblank: true,
+    isempty: true,
+    count: true,
+    counta: true,
+    values: true,
+    numbers: true,
+    numbersa: true,
+    average: true,
+    max: true,
+    median: true,
+    min:true,
+    product:true,
+    stdev:true,
+    sum: true,
+    variance: true,
+    zscores: true
+}
+
+Object.entries(FUNCTIONS).forEach(([key,f]) => {
+    FUNCTIONS[key] = function(...args) {
+        if(isDimension(args[0]) && !DIMENSIONFUNCTIONS[key]) {
+            return new TypeError(`${key}(${args[0].path}) '${args[0].path}' is a Dimension not a value or cell.`)
+        }
+        if(isError(args[0])) return args[0];
+        try {
+            return f.call(this,...args);
+        } catch(e) {
+            return e;
+        }
+    }
+})
+
+const Sheet = (functions = {}, {root,path=""}={}) => {
     if (functions) Object.assign(FUNCTIONS, functions);
     const proxy = new Proxy(reactive({}), {
         get(target, property) {
             if(property==="isDimension") return ()=> true;
-            return target[property] ||= Sheet(null, root || target);
+            if(property==="path") return path;
+            return target[property]!==undefined ? target[property] : (target[property] = Sheet(null, {root:root || target,path:path ? path + "." + property : property}));
         },
         set(target, property, value) {
+            if(property==="path") throw new TypeError(`can't assign read-only property "path" on Dimension`)
             if (typeof (value) === "function") {
                 const data = {},
                     body = getFunctionBody(value),
-                    f = Function("functions", "data", "return function() { return data.value = (() => { with(functions) { with(this) { " + (body.includes("return") ? body : "return " + body) + " }}})() }")(FUNCTIONS, data),
+                    f = Function("functions", "data", "return function() { return data.value = (() => { with(functions) { with(this) { " + (body.includes("return") ? body : "return " + body||undefined) + " }}})() }")(FUNCTIONS, data),
                     o = target[property] = observer(f, root || target),
                     valueOf = () => {
                         if(data.value!==valueOf.oldValue) {
@@ -223,6 +296,7 @@ const Sheet = (functions = {}, root) => {
                         }
                         return valueOf.oldValue = data.value;
                     };
+                    o.withOptions({onerror:(e) => e});
                 enhanceObserver(o,valueOf);
             } else {
                 target[property] = value;

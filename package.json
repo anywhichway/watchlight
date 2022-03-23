@@ -1,6 +1,6 @@
 {
   "name": "watchlight",
-  "version": "1.0.2b",
+  "version": "1.0.3b",
   "description": "A light weight, comprehensive, reactive framework for business logic.",
   "type": "module",
   "main": "index.js",
@@ -32,5 +32,8 @@
   "bugs": {
     "url": "https://github.com/anywhichway/watchlight/issues"
   },
-  "homepage": "https://github.com/anywhichway/watchlight#readme"
+  "homepage": "https://github.com/anywhichway/watchlight#readme",
+  "devDependencies": {
+    "jest": "^27.5.1"
+  }
 }

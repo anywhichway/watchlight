@@ -183,7 +183,7 @@ class ReactorEvent {
 
 const isReactor = (target) => target && typeof(target)==="object" && target["__reactiveuid__"];
 
-const Reactor = (target,domain={},{bind}={}) => {
+const Reactor = (target,domain={},{bind,path=""}={}) => {
     const type= typeof(target);
     if(!target || (type!=="object" && type!=="function")) return target;
     if(target.__reactiveuid__) return target;
@@ -399,9 +399,9 @@ const Reactor = (target,domain={},{bind}={}) => {
                 let value = local[property];
                 if(value!==undefined) return value;
                 value = target[property];
-                if(property==="prototype") return value;
+                if(property==="prototype" || property.toString()=="Symbol(Symbol.unscopables)") return value;
                 const vtype = typeof(value);
-                if(value && vtype==="object") value = childReactors[property] ||= Reactor(value); // only create one reactor
+                if(value && vtype==="object") value = childReactors[property] ||= Reactor(value,undefined,{path:path ? path + "." + property : property}); // only create one reactor
                 if(type==="object") {
                     if(CURRENTWHEN) {
                         const reactors = ctor.functions[property] ||= new Set();
@@ -471,11 +471,11 @@ const Reactor = (target,domain={},{bind}={}) => {
                     handleEvent(new ReactorEvent({event:"fire",target,reactor:proxy,thisArg,argumentList:[binding,...args]}));
                     stats.succeeded++;
                     result = doThen(result,binding);
-                    if(!bindings.some((b) => Object.entries(binding).every(([key,value]) => b[key]===value))) {
-                        bindings[bindings.length] = binding; // slightly faster than push
-                    }
+                    //if(!bindings.some((b) => Object.entries(binding).every(([key,value]) => b[key]===value))) {
+                     //   bindings[bindings.length] = binding; // slightly faster than push
+                    //}
                 } else {
-                    bindings = bindings.filter((b) => !Object.entries(binding).every(([key,value]) => b[key]===value))
+                    //bindings = bindings.filter((b) => !Object.entries(binding).every(([key,value]) => b[key]===value))
                 }
                 conditions.clear();
                 return result;
@@ -616,12 +616,17 @@ const whilst = (target,result,domain={},{bind,onassert}={}) => {
 }
 
 const observer = (f,thisArg,...args) => {
-    let observer;
+    let observer, errors = (e) => { throw(e) };
     if(Object.getPrototypeOf(f)===Object.getPrototypeOf(async ()=>{})) {
         observer = async function(...args) {
             if (CURRENTOBSERVER !== observer) {
-                    CURRENTOBSERVER = observer;
-                const result = await f.call(this, ...args);
+                let result;
+                CURRENTOBSERVER = observer;
+                try {
+                    result = await f.call(this, ...args);
+                } catch(e) {
+                    result = errors(e);
+                }
                 CURRENTOBSERVER = null;
                 return result;
             }
@@ -630,17 +635,23 @@ const observer = (f,thisArg,...args) => {
     } else {
         observer = function (...args) {
             if (CURRENTOBSERVER !== observer) {
+                let result;
                 CURRENTOBSERVER = observer;
-                const result = f.call(this, ...args);
+                try {
+                    result = f.call(this, ...args);
+                } catch(e) {
+                    result = errors(e);
+                }
                 CURRENTOBSERVER = null;
                 return result;
             }
         }
         if (f.name && f.name!=="anonymous") observer = Function(`return function ${f.name}(...args) { return (${observer}).call(this,...args) }`)();
     }
-    Object.defineProperty(observer,"stop",{configurable:true,writable:true,value:()=>observer.stopped===true});
-    Object.defineProperty(observer,"start",{configurable:true,writable:true,value:()=>delete observer.stopped})
     if(thisArg!==undefined) observer = observer.bind(thisArg,...args);
+    Object.defineProperty(observer,"stop",{configurable:true,writable:true,value:()=>observer.stopped===true});
+    Object.defineProperty(observer,"start",{configurable:true,writable:true,value:()=>delete observer.stopped});
+    Object.defineProperty(observer,"withOptions",{configurable:true,writable:true,value:function({onerror}={}) { errors=onerror; return observer; }});
     observer();
     return observer;
 }
