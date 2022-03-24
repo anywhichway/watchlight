@@ -1,6 +1,6 @@
 {
   "name": "watchlight",
-  "version": "1.0.5b",
+  "version": "1.0.6b",
   "description": "A light weight, comprehensive, reactive framework for business logic.",
   "type": "module",
   "main": "index.js",

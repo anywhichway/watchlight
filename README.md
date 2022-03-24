@@ -1,31 +1,22 @@
-<style>
-  .toc ul {
-	margin: 0px;
-	list-style: none; /* This removes the list styling which are provided by default */
-	padding: 5px; /* Removes the front padding */
-  }
-  .toc ul li a {
-      text-decoration: none; /* Removes the underline from the link tags */
-  }
-  .toc ul li {
-      padding: 2px; /* Adds a little space around each <li> tag */
-  }
-</style>
-<div style="position:fixed;max-height:500px">
-<div style="font-size:125%;font-weight:bold"> watchlight v1.0.5b (BETA) </div>
+<div id="TOC" style="position:fixed;max-height:95vh;height:95vh">
+
+<div id="header">
+<div style="font-size:125%;font-weight:bold;"> watchlight v1.0.6b (BETA) </div>
+<span style="float:right;font-weight:bold">&lt;&lt</span>
 <i>For when things change.</i>
-<div class="toc" style=";border:1px solid grey;border-radius:5px;width:280px;max-height:475px;overflow-x:hidden;overflow-y:auto">
+</div>
+<div class="toc" style=";border:1px solid grey;border-radius:5px;max-height:95%;overflow-x:hidden;overflow-y:auto">
 
 </div>
 </div>
-<div style="float:right;padding-top:0px;min-width:500px;max-width:calc(100% - 290px);max-height:100vh;overflow:auto">
+<div id="content" style="float:right;padding-top:0px;min-width:200px;max-width:calc(100% - 290px);max-height:100vh;overflow:auto">
 
-<div>A light weight (11K minified, 4K gzipped), comprehensive, reactive framework for business logic.</div>
+<div>A light-weight, comprehensive, reactive framework for business logic and when things change.</div>
 
 ## Introduction
 
-`Watchlight` is un-opinionated and provides a range of approaches to support reactive programming beyond the DOM and
-user interface.
+`Watchlight` provides a range of approaches to support reactive programming beyond the DOM and user interface with a 
+light-weight JavaScript module (11K minified, 4K gzipped).
 
 * <a href="#event-listeners">Event listeners</a> on any reactive object via `addEventListener`.
 * <a href="#observers">Observers</a> via functions wrapping reactive objects, e.g. `observer(() => console.log(myObject.name))` 
@@ -837,6 +828,8 @@ A custom commercial license. Contact syblackwell@anywhichway.com.
 
 ## Change History 
 Reverse Chronological Order
+
+2022-03-24 v1.0.6b Documentation TOC tray added.
 
 2022-03-23 v1.0.5b Documentation style updates.
 

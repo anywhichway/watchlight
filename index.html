@@ -6,6 +6,19 @@
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.4.0/build/styles/default.min.css">
     <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.4.0/build/highlight.min.js"></script>
+    <style>
+        .toc ul {
+            margin: 0px;
+            list-style: none; /* This removes the list styling which are provided by default */
+            padding: 5px; /* Removes the front padding */
+        }
+        .toc ul li a {
+            text-decoration: none; /* Removes the underline from the link tags */
+        }
+        .toc ul li {
+            padding: 2px; /* Adds a little space around each <li> tag */
+        }
+    </style>
     <script type="module">
         function generateLinkMarkup(contentElement) {
             const headings = [...contentElement.querySelectorAll('h2, h3')]
@@ -69,6 +82,32 @@
         });
         dom.body.style = "overflow:hidden;height:100%;max-height:100%"
         document.body.replaceWith(dom.body);
+
+        const toggle = document.getElementById("TOC");
+        toggle.addEventListener("click",({target}) => {
+            console.log(target)
+            const toc = document.getElementById("TOC"),
+                header = document.getElementById("header"),
+                scroller = document.getElementsByClassName("toc")[0],
+                content = document.getElementById("content");
+            if(toc.style["max-width"]=="2px") {
+                toc.style.setProperty("max-width","");
+                toc.style.setProperty("max-height","95vh");
+                toc.style.setProperty("height","95vh");
+                scroller.style.setProperty("overflow-y","auto");
+                scroller.style.setProperty("max-height","95%");
+                header.style.setProperty("display","initial");
+                content.style.setProperty("max-width","calc(100% - 290px)");
+            } else {
+                toc.style.setProperty("max-width","2px");
+                toc.style.setProperty("max-height","98vh");
+                toc.style.setProperty("height","98vh");
+                scroller.style.setProperty("overflow-y","hidden");
+                scroller.style.setProperty("max-height","100%");
+                header.style.display = "none";
+                content.style.setProperty("max-width","98%");
+            }
+        });
     </script>
 </head>
 <body>
