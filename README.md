@@ -416,17 +416,21 @@ Person {name:"joe"}
 
 ```javascript
 when(({person}) => person.age<21,{person:Person}) 
-    // runs every time a new person is added with an age < 21 or a person's age changes to < 21
+    // runs every time a new person is added with an age < 21
+    // or a person's age changes to < 21
     .then(({person}) => console.log(person,"is a minor"))
 ```
 
 ```javascript
  whilst(function match({person1,person2}) {
-     // creates pairs of people, automatically removes pair if a person's name changes or a person is removed
+     // creates pairs of people, automatically removes pair 
+     // if a person's name changes or a person is removed
      // Combo has an equals methods on it so that it is reflexive
      return person1.name!==person2.name && not(Combo(person1,person2));
-},({person1,person2}) => Combo(person1,person2), {person1:Person,person2:Person})
-    .then((combo) => console.log("A pair:",combo)) // NOTE: then gets the newly created object as its argument
+    }, ({person1,person2}) => Combo(person1,person2), // create pair
+        {person1:Person,person2:Person})
+    .then((combo) => console.log("A pair:",combo)) 
+    // NOTE: then gets the newly created Combo object as its argument
 ```
 
 ### Inference Rules API
@@ -441,15 +445,21 @@ an object that seems to be an `instanceof` the constructor.
 ```javascript
 class Desk {
     constructor(location) {
-        if(location===undefined) throw new TypeError("'location' is required for Desk");
+        if(location===undefined) {
+            throw new TypeError("'location' is required for Desk");
+        }
         this.location = location;
     }
     assign(person) {
         this.assigned = person;
     }
 }
-when(({person}) => not(Partial(Desk,{assigned:person})),{person:Person})
-        .then(({person}) => console.log(person,"is not assigned a desk"));
+when(({person}) => {
+    return not(Partial(Desk,{assigned:person}))
+},{person:Person})
+        .then(({person}) => {
+            console.log(person,"is not assigned a desk")
+        });
 ```
 
 #### Proxy assert(data:object)
@@ -480,10 +490,14 @@ Checks to see if an object or partial object exists. Typically, used as part of 
 let joe = reactive(new Person({name:"joe",age:20})),
     mary = reactive(new Person({name:"mary",age:27})),
     joe = assert(joe);
-joeexists = exists(joe); // true
-namedjoeexists = exists(new Person({name:"joe"})); // true because of joe
-rightageexists = exists(new Person({age:21})); // false because joe is 20 and mary is not asserted
-namedmaryexists = exists(new Person({name:"mary"})); // false, because mary was noit asserted to rule memory
+// true
+joeexists = exists(joe); 
+// true because of joe
+namedjoeexists = exists(new Person({name:"joe"}));
+// false because joe is 20 and mary is not asserted
+rightageexists = exists(new Person({age:21}));
+// false, because mary was not asserted to rule memory
+namedmaryexists = exists(new Person({name:"mary"})); 
 ```
 
 #### any rule.then(action:function,{conditions})
@@ -522,8 +536,10 @@ Returns: Reactive `Proxy` for the data if it was in working memory, otherwise `u
 let joe = reactive(new Person({name:"joe",age:27})),
     mary = reactive(new Person({name:"mary",age:27})),
 joe = assert(joe);
-joe = retract(joe); // joe is still defined
-mary = retract(mary) // mary is now undefined because she did not exist in rule memory
+// joe is still defined because joe was in owrking memory
+joe = retract(joe);
+// mary is now undefined because she did not exist in working memory
+mary = retract(mary)
 ```
 
 <a id="when"></a>
@@ -555,13 +571,17 @@ Returns: Reactive `Proxy` for `condition`.
 
 ```javascript
 whilst(
-    function match({person1,person2}) { 
-        return person1.name!==person2.name && not(Combo(person1,person2)); // condition
+    function match({person1,person2}) {   // condition
+        return person1.name!==person2.name && not(Combo(person1,person2));
     },
     ({person1,person2}) => Combo(person1,person2), // conclusion
     {person1:Person,person2:Person}, // domain
     {onassert:({event,proxy,target}) => console.log("asserted",proxy)})
-    .then((combo) => combo.addEventListener("retract",() => console.log("retracted",combo))) // watch for retraction
+    .then((combo) => { // watch for retraction
+        return combo.addEventListener("retract",() => {
+            console.log("retracted",combo)
+        })
+    }) 
     .then((combo) => console.log("A pair!",combo))
 ```
 
@@ -580,15 +600,19 @@ The `this` context of `then` is the data which causes a rule to fire. The match 
 
 ```javascript
 whilst(
-    function match({person1,person2}) { 
-        return person1.name!==person2.name && not(Combo(person1,person2)); // condition
+    function match({person1,person2}) { // condition
+        return person1.name!==person2.name && not(Combo(person1,person2)); 
     },
     {person1:Person,person2:Person}) // domain
     .then(function({person1,person2},{conditions}) {
         const combo = assert(Combo(person1,person2)).withConditions(conditions);
         console.log("asserted",combo);
     })
-    .then((combo) => combo.addEventListener("retract",() => console.log("retracted",combo))) // watch for retraction
+    .then((combo) => { // watch for retraction
+        return combo.addEventListener("retract",() => {
+          console.log("retracted",combo)
+       })
+    }) 
     .then((combo) => console.log("A pair!",combo))
 ```
 
@@ -626,7 +650,9 @@ const joe = assert(new Person({name:"joe",age:27}));
 joe.when(function({bound,partner}) {
     return partner.name!==bound.name
 },{partner:Person})
-    .then(({bound,partner}) => console.log("joe partner",partner));
+    .then(({bound,partner}) => {
+        console.log("joe partner",partner)
+    });
 ```
 
 Note the domain and the parameterized object as an argument.
@@ -703,8 +729,12 @@ During this early release, there are only basic functions on a `Sheet`, you may 
 const sheet = Sheet({
     reverse(value) {
         if(value) {
-            if(typeof(value.reverse)==="function") return value.reverse();
-            if(typeof(value)==="string") return value.split().reverse().join();
+            if(typeof(value.reverse)==="function") {
+                return value.reverse();
+            }
+            if(typeof(value)==="string") {
+                return value.split().reverse().join();
+            }
         }
     }
 })
