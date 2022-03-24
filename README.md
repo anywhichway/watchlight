@@ -1,6 +1,27 @@
-# v1.0.3b (BETA)
+<style>
+  .toc ul {
+	margin: 0px;
+	list-style: none; /* This removes the list styling which are provided by default */
+	padding: 5px; /* Removes the front padding */
+  }
+  .toc ul li a {
+      text-decoration: none; /* Removes the underline from the link tags */
+  }
+  .toc ul li {
+      padding: 2px; /* Adds a little space around each <li> tag */
+  }
+</style>
+<div style="position:fixed;margin-right:30px">
+<p style="font-size:125%;font-weight:bold"> watchlight v1.0.4b (BETA) </p>
+<div class="toc" style=";border:1px solid grey;border-radius:5px;width:280px;overflow-x:hidden;overflow-y:auto">
+
+</div>
+</div>
+<div style="padding-top:.5em;float:right;width:calc(100% - 290px);">
 
 A light weight (11K minified, 4K gzipped), comprehensive, reactive framework for business logic.
+
+## Introduction
 
 `Watchlight` is un-opinionated and provides a range of approaches to support reactive programming beyond the DOM and
 user interface.
@@ -12,7 +33,7 @@ will log the `name` every time it changes.
 <a href="https://www.npmjs.com/package/rools">Rools</a> and modeled after the `Promise` paradigm.
 * <a href="#sheet">Spreadsheets</a> ... no reactive library would be complete without them.
 
-The `Sheet` is provided as a separate file and is not included in the 4K size stated above.
+The spreadsheet is provided as a separate file, `./sheet.js` and is not included in the 4K size stated above.
 
 `Watchlight` does not use any intermediate languages or transpilation; hence, you can debug all of your code as written 
 using a standard JavaScript debugger.
@@ -28,9 +49,9 @@ npm install watchlight
 
 Transpiling and minifying is left to the developer using the library.
 
-## Example Use
+## Using The Examples
 
-There are examples in the <a href="./examples" target="_tab">examples</a> directory and sub-directories. Most examples 
+There are examples in the <a href="./examples" target="_tab">examples  directory and sub-directories</a>. Most examples 
 can be run by both loading an HTML file and running the command `node examplefilename.js`. The HTML files just load the 
 same JavaScript files that are fed to NodeJS on the command line.
 
@@ -161,7 +182,7 @@ change in value. They are more powerful that event handlers because they can ope
 
 Observers are the cornerstone of the `watchlight` <a href="#sheet">spreadsheet</a> functionality.
 
-### Example
+### Observer Examples
 
 ```javascript
 const user = reactive({name:"mary"});
@@ -279,7 +300,6 @@ const doTasks = observer(() => {
     if (task) {
         // complete the task in the defined duration
         setTimeout(() => task.complete = true, task.duration);
-        tasks.currentTask = task;
         // will access all properties
         console.log("doing:", unobserve(() => JSON.stringify(tasks.currentTask)));
         observer(() => {  // called whenever current task completion is changed
@@ -370,7 +390,7 @@ Rules are processed in a cycle with a run limit that may be Infinity:
    1. if runlimit exceeded, stop
    2. else set timeout to watch for new rules added to the rule agenda
    
-### Examples
+### Rule Examples
 
 ```javascript
 when(({object}) => true,{object:Object}) 
@@ -609,7 +629,7 @@ This rule will match Joe with all possible partners.
 <a href="./examples/rules/pairs.html" target=_tab>Pair matching beyond the examples in this document.</a>: 
 <a href="./examples/rules/pairs.js" target=_tab>source</a>.
 
-## Sheet
+## Spreadsheet
 
 Spreadsheet like functionality is provided through a separately loaded module `./sheet.js`. The functionality is
 headless and depends on object access paths for its notation. It is also n-dimensional and sparse. Formulas can be set at
@@ -629,7 +649,7 @@ then it should be an un-interpolated string template literal that accesses `this
 get the cell as its `this` value, so it can call `this.valueOf()`. It should return a string.
 
 The code below can be <a href="./examples/sheets/basic.html" target=_tab>run</a> or <a href="./examples/sheets/basic.js">viewed</a>
-in the <a href="./examples/index.htm" target=_tab>examples></a> directory.
+in the <a href="./examples/index.htm" target=_tab>examples</a> directory.
 
 ```javascript
 import {Sheet} from "../Sheet.js";
@@ -676,15 +696,38 @@ const sheet = Sheet({
 })
 ```
 
-Sheet functions behave like their similarly named functions in MS Excel and Google Sheet.
+***Note***:  You can't add custom functions that are closures around variables that are out of scope to Sheet.
 
-Most functions will automatically convert cell references to iterables that are spread into arguments when necessary.
+Sheet functions behave like their similarly named counterparts in MS Excel and Google Sheet.
+
+Most functions will automatically convert cell references to iterables when necessary.
 
 Some functions require a cell or a value for an argument and not a `Dimension`. If you call a function that can't take
 a `Dimension` with a `Dimension`, you will get an error similar to this:
 
 ```shell
-TypeError: isnumber(tab1.A.3) 'tab1.A.3' is a Dimension not a value or cell
+TypeError: isnumber(tab1.A.3) 'tab1.A.3' is a Dimension not a value or Cell
+```
+
+### Self Referencing Formulas
+
+Directly circular formulas are automatically avoided by excluding the cell in which the formula is defined from the
+range it may reference, e.g.
+
+```javascript
+ const sheet = Sheet();
+    sheet.tab1.A[1] = 1;
+    sheet.tab1.A[2] = 2;
+    sheet.tab1.A[3] = 3;
+    sheet.tab1.A[4] = () => sum([tab1.A]); // 5
+ ```
+### Paths
+
+The path to a `Dimension` or `Cell` is available as a property:
+
+```javascript
+const sheet = Sheet();
+console.log(sheet.tab1.A[1].path); // logs "tab1.A.1"
 ```
 
 ### Logical and Info Sheet Functions
@@ -791,7 +834,10 @@ or
 
 A custom commercial license. Contact syblackwell@anywhichway.com.
 
-## Change History (Reverse Chronological Order)
+## Change History 
+Reverse Chronological Order
+
+2022-03-23 v1.0.4b More unit tests. Documentation content and style updates.
 
 2022-03-23 v1.0.3b Unit tests, fixed bug in proxy property lookup that was creating extra reactive sub-objects when
 value was false. Minor rule performance improvement. Added `observer.withOptions`.
@@ -813,3 +859,5 @@ value was false. Minor rule performance improvement. Added `observer.withOptions
 2022-03-18 v0.0.2b Documentation updates
 
 2022-03-18 v0.0.1b Initial public release
+</div>
+

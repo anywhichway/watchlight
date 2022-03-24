@@ -6,7 +6,6 @@ const doTasks = observer(() => {
     const task = tasks.currentTask = unobserve(() => tasks.shift());
     if (task) {
         setTimeout(() => task.complete = true, task.duration);
-        tasks.currentTask = task;
         // will access all properties
         console.log("doing:", unobserve(() => JSON.stringify(tasks.currentTask)));
         observer(() => {

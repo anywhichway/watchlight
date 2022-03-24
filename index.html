@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Watchlight</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.4.0/build/styles/default.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.4.0/build/highlight.min.js"></script>
+    <script type="module">
+        function generateLinkMarkup(contentElement) {
+            const headings = [...contentElement.querySelectorAll('h2, h3')]
+            const parsedHeadings = headings.map(heading => {
+                return {
+                    title: heading.innerText,
+                    depth: parseInt(heading.nodeName.replace(/\D/g,'')),
+                    id: heading.getAttribute('id')
+                }
+            });
+            const generate = (headings,i=0,html) => {
+                return headings.reduce((html, heading, index, array) => {
+                    const depth = heading.depth;
+                    if (index > 0) {
+                        if(depth > array[index - 1].depth) html += `<ul>${generate(array.slice(index))}</ul>`
+                        else if(depth < array[index - 1].depth) {
+                            array.splice(0,array.length);
+                            return html;
+                        } else {
+                            html += `<li><a href="#${heading.id}">${heading.title}</a></li>`;
+                            array.shift();
+                        }
+                    } else {
+                        html += `<li><a href="#${heading.id}">${heading.title}</a></li>`;
+                        array.shift();
+                    }
+                    return html;
+                }, "")
+            }
+            let html = "";
+            for(let i=0;i<parsedHeadings.length;i++) {
+                const heading = parsedHeadings[i];
+                if(i>0) {
+                    if(heading.depth>parsedHeadings[i-1].depth) {
+                        html+="<ul>"
+                    } else if(heading.depth<parsedHeadings[i-1].depth) {
+                        html+="</ul>"
+                    }
+                    html += `<li><a href="#${heading.id}">${heading.title}</a></li>`;
+                } else {
+                    html += `<li><a href="#${heading.id}">${heading.title}</a></li>`;
+                }
+            }
+            return `<ul>${html}</ul>`;
+        }
+        const parser = new DOMParser(),
+            decode = (string) => {
+                return string.replace(/(?<=\${.*)(&amp;&amp;)(.*})/g, "&&$2")
+                    .replace(/(?<=\${.*)(&quote;)(.*})/g, "'$2")
+                    .replace(/(?<=\${.*)(&lt;)(.*})/g, "<$2")
+                    .replace(/(?<=\${.*)(&gt;)(.*})/g, ">$2")
+            },
+            readme = await fetch("./README.md").then((result) => result.text());
+        const dom =  parser.parseFromString(decode(marked.parse(readme,{})),"text/html"),
+            toc = dom.querySelector(".toc");
+        if(toc) {
+            toc.innerHTML = generateLinkMarkup(dom.body);
+        }
+        dom.querySelectorAll('pre code').forEach((el) => {
+            hljs.highlightElement(el);
+        });
+        document.body.replaceWith(dom.body);
+    </script>
+</head>
+<body>
+</body>
+</html>

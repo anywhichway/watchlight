@@ -119,41 +119,41 @@ const FUNCTIONS = {
         return Math.acosh(number);
     },
     asin(number) {
-        Math.asin(number);
+        return Math.asin(number);
     },
     asinh(number) {
-        Math.asinh(number);
+        return Math.asinh(number);
     },
     atan(number) {
-        Math.atan(number);
+        return Math.atan(number);
     },
     atan2(number) {
-        Math.atan2(number);
+        return Math.atan2(number);
     },
     cos(number) {
-        Math.cos(number);
+        return Math.cos(number);
     },
     cosh(number) {
-        Math.cosh(number);
+        return Math.cosh(number);
     },
     pi() {
-        3.14159265358979;
+        return 3.14159265358979;
     },
     rand() {
-        Math.random();
+        return Math.random();
     },
     sin(number) {
-        Math.sin(number);
+        return Math.sin(number);
     },
     tan(number) {
-        Math.tan(number);
+        return Math.tan(number);
     },
     tanh(number) {
-        Math.tanh(number);
+        return Math.tanh(number);
     },
     // Coercion
     int(value) {
-        return Math.round(parseInt(value+""));
+        return parseInt(value+"");
     },
     float(value) {
         return parseFloat(value+"") * 1.0;
@@ -264,7 +264,7 @@ const DIMENSIONFUNCTIONS = {
 Object.entries(FUNCTIONS).forEach(([key,f]) => {
     FUNCTIONS[key] = function(...args) {
         if(isDimension(args[0]) && !DIMENSIONFUNCTIONS[key]) {
-            return new TypeError(`${key}(${args[0].path}) '${args[0].path}' is a Dimension not a value or cell.`)
+            return new TypeError(`${key}(${args[0].path}) '${args[0].path}' is a Dimension not a value or Cell.`)
         }
         if(isError(args[0])) return args[0];
         try {
