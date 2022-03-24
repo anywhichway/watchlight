@@ -851,7 +851,7 @@ A custom commercial license. Contact syblackwell@anywhichway.com.
 ## Change History 
 Reverse Chronological Order
 
-2022-03-25 v1.0.8b
+2022-03-25 v1.0.8b Documentation layout.
 
 2022-03-24 v1.0.7b Documentation layout. More unit tests. Fixed issues with checking presence of an removing event handlers.
 
