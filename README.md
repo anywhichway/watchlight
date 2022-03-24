@@ -11,15 +11,16 @@
       padding: 2px; /* Adds a little space around each <li> tag */
   }
 </style>
-<div style="position:fixed;margin-right:30px">
-<p style="font-size:125%;font-weight:bold"> watchlight v1.0.4b (BETA) </p>
-<div class="toc" style=";border:1px solid grey;border-radius:5px;width:280px;overflow-x:hidden;overflow-y:auto">
+<div style="position:fixed;max-height:500px">
+<div style="font-size:125%;font-weight:bold"> watchlight v1.0.5b (BETA) </div>
+<i>For when things change.</i>
+<div class="toc" style=";border:1px solid grey;border-radius:5px;width:280px;max-height:475px;overflow-x:hidden;overflow-y:auto">
 
 </div>
 </div>
-<div style="padding-top:.5em;float:right;width:calc(100% - 290px);">
+<div style="float:right;padding-top:0px;min-width:500px;max-width:calc(100% - 290px);max-height:100vh;overflow:auto">
 
-A light weight (11K minified, 4K gzipped), comprehensive, reactive framework for business logic.
+<div>A light weight (11K minified, 4K gzipped), comprehensive, reactive framework for business logic.</div>
 
 ## Introduction
 
@@ -836,6 +837,8 @@ A custom commercial license. Contact syblackwell@anywhichway.com.
 
 ## Change History 
 Reverse Chronological Order
+
+2022-03-23 v1.0.5b Documentation style updates.
 
 2022-03-23 v1.0.4b More unit tests. Documentation content and style updates.
 

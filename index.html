@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <title>Watchlight</title>
+    <meta name="viewport" content="width=device-width, initial-scale=.75">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.4.0/build/styles/default.min.css">
     <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.4.0/build/highlight.min.js"></script>
@@ -66,6 +67,7 @@
         dom.querySelectorAll('pre code').forEach((el) => {
             hljs.highlightElement(el);
         });
+        dom.body.style = "overflow:hidden;height:100%;max-height:100%"
         document.body.replaceWith(dom.body);
     </script>
 </head>
