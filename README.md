@@ -1,4 +1,4 @@
-<div id="TOC" style="position:fixed;max-height:95vh;height:95vh">
+<div id="TOC" style="position:fixed;max-height:95vh;height:95vh;">
 
    <div id="header">
       <div style="font-size:125%;font-weight:bold;"> watchlight v1.0.8b (BETA) </div>

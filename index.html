@@ -91,7 +91,7 @@
         content.style.setProperty("max-width",`calc(100% - ${toc.clientWidth+30}px)`);
         toggle.addEventListener("click",({target}) => {
             const y = content.scrollTop;
-            if(toc.style["max-width"]=="5px") {
+            if(toc.style["max-width"]=="8px") {
                 toc.style.setProperty("max-width","");
                 toc.style.setProperty("max-height","95vh");
                 toc.style.setProperty("height","95vh");
@@ -101,7 +101,7 @@
                 content.style.setProperty("max-width",`calc(100% - ${toc.clientWidth+30}px)`);
                 content.scrollTop = y + 250;
             } else {
-                toc.style.setProperty("max-width","5px");
+                toc.style.setProperty("max-width","8px");
                 toc.style.setProperty("max-height","98vh");
                 toc.style.setProperty("height","98vh");
                 scroller.style.setProperty("overflow-y","hidden");
