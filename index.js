@@ -287,13 +287,17 @@ const Reactor = (target,domain={},{bind,path=""}={}) => {
                 (listeners[eventName] ||= new Map()).set(listener,{listener,options:{synchronous}});
                 return proxy;
             },
-            hasEventListener(event,listener) {
+            hasEventListener(eventName,listener) {
                 if(!["defineProperty","change","delete","fire","retract"].includes(eventName)) throw new TypeError(`Invalid event name: ${eventName}`);
-                return (listeners[event] ||= new Map()).has(listener);
+                return [...(listeners[eventName] ||= new Map()).keys()].some((key) => {
+                    return listener===key || listener.name===key.name || listener===key.name || listener+""===key+"";
+                })
             },
-            removeEventListener(event,listener) {
+            removeEventListener(eventName,listener) {
                 if(!["defineProperty","change","delete","fire","retract"].includes(eventName)) throw new TypeError(`Invalid event name: ${eventName}`);
-                (listeners[event] ||= new Map()).delete(listener);
+                [...(listeners[eventName] ||= new Map()).keys()].forEach((key) => {
+                    if(listener===key || listener.name===key.name || listener===key.name  || listener+""===key+"") listeners[eventName].delete(key);
+                })
                 return proxy;
             },
             addDependency({target,property}) {

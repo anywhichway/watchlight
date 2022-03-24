@@ -1,15 +1,15 @@
 <div id="TOC" style="position:fixed;max-height:95vh;height:95vh">
 
-<div id="header">
-<div style="font-size:125%;font-weight:bold;"> watchlight v1.0.6b (BETA) </div>
-<span style="float:right;font-weight:bold">&lt;&lt</span>
-<i>For when things change.</i>
+   <div id="header">
+      <div style="font-size:125%;font-weight:bold;"> watchlight v1.0.7b (BETA) </div>
+      <span style="float:right;font-weight:bold">&lt;&lt</span>
+      <i>For when things change.</i>
+   </div>
+   <div class="toc" style="border:1px solid grey;border-radius:5px;max-height:95%;overflow-x:hidden;overflow-y:auto">
+   
+   </div>
 </div>
-<div class="toc" style=";border:1px solid grey;border-radius:5px;max-height:95%;overflow-x:hidden;overflow-y:auto">
-
-</div>
-</div>
-<div id="content" style="float:right;padding-top:0px;min-width:200px;max-width:calc(100% - 290px);max-height:100vh;overflow:auto">
+<div id="content" style="float:right;padding-top:0px;min-width:200px;max-height:100vh;overflow:auto">
 
 <div>A light-weight, comprehensive, reactive framework for business logic and when things change.</div>
 
@@ -152,17 +152,25 @@ Fires when the object is removed from working memory.
 
 ```javascript
 const aPerson = reactive({name:"joe",age:27});
-aPerson.addEventListener("defineProperty",({event,target,reactor,property,value}) => {  console.log(event,target);   });
-aPerson.addEventListener("change",({event,target,reactor,property,value,oldValue}) => {  console.log(event,target); });
+aPerson.addEventListener("defineProperty",({event,target,reactor,property,value}) => {  
+    console.log(event,target);   
+});
+aPerson.addEventListener("change",({event,target,reactor,property,value,oldValue}) => {  
+    console.log(event,target); 
+});
 aPerson.addEventListener("delete",
-        function myDelete({event,target,reactor,property,oldValue}) { console.log(event,target);  },
+        function myDelete({event,target,reactor,property,oldValue}) { 
+            console.log(event,target);
+            },
         {synchronous:true});
 
 aPerson.married = true; // invokes the defineProperty handler asynchronously using setTimeout
 aPerson.age = 30; // invokes the change handler asynchronously using setTimeout with the oldValue as 27
 delete aPerson.age; // invokes the delete handler synchronously with the oldValue as 30 (due to the change above)
 
-aPerson.removeEventListener("change",({event,target,reactor,property,value,oldValue}) => { console.log(event,target); });
+aPerson.removeEventListener("change",({event,target,reactor,property,value,oldValue}) => { 
+    console.log(event,target); 
+});
 aPerson.removeEventListener("delete","myDelete"); // removes the delete event listener
 aPerson.removeEventListener("delete",function myDelete() {}); // also removes the delete event listener
 ```
@@ -172,7 +180,7 @@ aPerson.removeEventListener("delete",function myDelete() {}); // also removes th
 Observers are functions that get invoked automatically every time the properties on the reactive objects they reference 
 change in value. They are more powerful that event handlers because they can operate across multiple objects.
 
-Observers are the cornerstone of the `watchlight` <a href="#sheet">spreadsheet</a> functionality.
+Observers are the cornerstone of the `watchlight` <a href="#spreadsheet">spreadsheet</a> functionality.
 
 ### Observer Examples
 
@@ -184,7 +192,7 @@ const hello = observer(() => {
 user.name = "joe";
 ```
 
-writes
+logs
 
 ```shell
 Hello mary
@@ -201,6 +209,8 @@ observer(() => {
 })
 user.contactInfo.phone = "999-999-9999";
 ```
+
+logs
 
 ```shell
 {"name":"mary","contactInfo":{"phone":"555-555-5555"}}
@@ -248,7 +258,7 @@ user.name = "joe";
 hello();
 ```
 
-will print
+logs
 
 ```shell
 Hello mary
@@ -260,7 +270,7 @@ Welcome to the world joe
 Hello joe
 ```
 
-#### observer.withOptions({onerror})
+#### observer.withOptions({onerror:function})
 
 Observer error handling defaults to re-throwing errors thrown by wrapped functions. This can be changed to swallow the
 error by passing `{onerror:()=>{}}` or use the error as the value by passing `{onerror:(e) => e}`.
@@ -337,7 +347,9 @@ processing engines can only be made using the same rule and data sets.
 
 Rules consist of:
 
-* `condition` - A single function that accepts one object as an argument and must return `true` or `false`.
+* `condition` - A single function that accepts one object as an argument and must return `true` or `false`. 
+Conditions should be side effect free. Modify working memory or call non-synchronous or side effect producing
+functions in conditions at your own risk.
 * `logically dependent data (optional)` - only present for <a href="#whilst">`whilst`</a> not <a href="#when">`when`</a> 
 rules.
 * `domain` - An object with the same properties as the argument to `condition`. The values of the properties are
@@ -358,8 +370,12 @@ when(
     }, // end condition
     {person1:Person,perrdon2:Person} // domain
 ).withOptions({priority:10}) // options
-    .then(({person1,person2}) => { return {person1,person2,avgAge:person1.age / person2.age} }) // first action
-    .then(({person1,person2,avgAge}) => console.log(person1.name,person2.name,avgAge)) // chained action
+    .then(({person1,person2}) => { // first action
+        return {person1,person2,avgAge:person1.age / person2.age} }
+    ) 
+    .then(({person1,person2,avgAge}) => { // chained action
+        console.log(person1.name,person2.name,avgAge)
+    }) 
 ```
 
 ### Rule Processing
@@ -475,7 +491,13 @@ namedmaryexists = exists(new Person({name:"mary"})); // false, because mary was 
 `action` has the call signature `(data:any)`.
 
 `data` is typically an object with multiple properties the values of which are other objects, e.g. 
-`{person:Person({name:"joe",age:27}),table:Table({number:12,capacity:10})`.
+
+````javascript
+{
+   person:Person({name:"joe",age:27}),
+   table:Table({number:12,capacity:10})
+}
+```
 
 If the `action` returns `undefined`, action processing will cease.
 
@@ -698,7 +720,7 @@ Some functions require a cell or a value for an argument and not a `Dimension`. 
 a `Dimension` with a `Dimension`, you will get an error similar to this:
 
 ```shell
-TypeError: isnumber(tab1.A.3) 'tab1.A.3' is a Dimension not a value or Cell
+TypeError: isnumber(A.5) 'A.5' is a Dimension not a value or Cell
 ```
 
 ### Self Referencing Formulas
@@ -828,6 +850,8 @@ A custom commercial license. Contact syblackwell@anywhichway.com.
 
 ## Change History 
 Reverse Chronological Order
+
+2022-03-24 v1.0.7b Documentation layout. More unit tests. Fixed issues with checking presence of an removing event handlers.
 
 2022-03-24 v1.0.6b Documentation TOC tray added.
 
