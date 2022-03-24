@@ -1,7 +1,7 @@
 <div id="TOC" style="position:fixed;max-height:95vh;height:95vh">
 
    <div id="header">
-      <div style="font-size:125%;font-weight:bold;"> watchlight v1.0.7b (BETA) </div>
+      <div style="font-size:125%;font-weight:bold;"> watchlight v1.0.8b (BETA) </div>
       <span style="float:right;font-weight:bold">&lt;&lt</span>
       <i>For when things change.</i>
    </div>
@@ -492,7 +492,7 @@ namedmaryexists = exists(new Person({name:"mary"})); // false, because mary was 
 
 `data` is typically an object with multiple properties the values of which are other objects, e.g. 
 
-````javascript
+```javascript
 {
    person:Person({name:"joe",age:27}),
    table:Table({number:12,capacity:10})
@@ -850,6 +850,8 @@ A custom commercial license. Contact syblackwell@anywhichway.com.
 
 ## Change History 
 Reverse Chronological Order
+
+2022-03-25 v1.0.8b
 
 2022-03-24 v1.0.7b Documentation layout. More unit tests. Fixed issues with checking presence of an removing event handlers.
 
