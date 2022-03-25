@@ -251,7 +251,7 @@ logs
 
 ### Observer API
 
-#### any observer(aFunction:function[,thisArg:object,...args:any])
+#### any observer(aFunction:function [,thisArg:object,...args:any])
 
 Creates an observer from `aFunction` you provide. The observer will be called any time the properties on the 
 objects it references change in value. You can also call the observer directly like it was the original function.
