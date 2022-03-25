@@ -1,6 +1,6 @@
 <div id="TOC" style="position:fixed;max-height:95vh;height:95vh;">
    <div id="header">
-      <div style="font-size:125%;font-weight:bold;"> watchlight v1.0.9b (BETA) </div>
+      <div style="font-size:125%;font-weight:bold;"> watchlight v1.0.10b (BETA) </div>
       <span style="float:right;font-weight:bold">&lt;&lt;</span>
       <i>For when things change.</i>
    </div>
@@ -135,7 +135,7 @@ Stops bubbling when called from a synchronous listeners, and all subsequent list
 Adds a `function` as an event listener on the `eventName`. The listener will receive a `ReactorEvent` when the
 `eventName` occurs on the `reactiveObject`, i.e. the listener has the signature `({event,....rest})`.
 
-Options has the surface `{synchronous,once}`.
+The `options` argument has the surface `{synchronous,once}`.
 
 Returns: The `reactiveObject`.
 
@@ -805,27 +805,41 @@ const sheet = Sheet();
 console.log(sheet.tab1.A[1].path); // logs "tab1.A.1"
 ```
 
-### Logical and Info Sheet Functions
+### Logical and Info Functions
 
-#### count(values:array|Dimension,{start:number|string,end:number|string})
-#### counta(values:array|Dimension,{start:number|string,end:number|string})
-#### iff(test, value1, value2) 
-#### isdimension(value)
-#### isblank(value)
-#### isboolean(value) 
-#### isempty(value)
-#### islogical(value) 
-#### isnumber(value) 
-#### isobject(value) 
-#### isstring(value) 
-#### isundefined(value)
-#### len(value)
+#### number count(values:Array<any>|Dimension,{start:number|string,end:number|string})
 
-### Math Sheet Functions
+#### number counta(values:Array<any>|Dimension,{start:number|string,end:number|string})
+
+#### any iff(test:truthy, value1:any, value2:any)
+
+#### boolean isdimension(value:any)
+
+#### boolean isblank(value:any)
+
+#### boolean isboolean(value:any)
+
+#### boolean isempty(value:any)
+
+#### boolean islogical(value:any)
+
+#### boolean isnumber(value:any)
+
+#### boolean isobject(value:any)
+
+#### boolean isstring(value:any)
+
+#### boolean isundefined(value:any)
+
+#### number len(value:any)
+
+Throws `TypeError` if `value` soe not have a `length` or `size` property or function.
+
+### Math Functions
 
 #### number average(values:array|Dimension,{start:number|string,end:number|string})
 
-#### number exp(number,power)
+#### number exp(value:number,power:number)
 
 #### number log10(value:number)
 
@@ -847,7 +861,7 @@ console.log(sheet.tab1.A[1].path); // logs "tab1.A.1"
 
 Returns Array.
 
-### Trigonometry Sheet Functions
+### Trigonometry Functions
 
 #### number acos(value:number)
 #### number acosh(value:number) 
@@ -863,7 +877,7 @@ Returns Array.
 #### number tan(value:number) 
 #### number tanh(value:number) 
 
-### Coercion Sheet Functions
+### Coercion Functions
 
 #### number int(value:string|number)
 
@@ -871,7 +885,7 @@ Returns Array.
 
 #### string lower(value:string) 
 
-#### Array<number> numbers(source:object,start:number|string,end:number|string)
+#### Array<number> numbers(source:Array<any>|Dimension,start:number|string,end:number|string)
 
 `source` can be an Array or a `Sheet` dimension. If `end` is less that `start` the return value is reversed.
 
@@ -911,6 +925,8 @@ A custom commercial license. Contact syblackwell@anywhichway.com.
 
 ## Change History 
 Reverse Chronological Order
+
+2022-03-25 v1.0.10b Documentation content updates.
 
 2022-03-25 v1.0.9b Documentation content updates. Renamed main entry point to `watchlight.js`. More unit tests 
 and event bubbling work. Fixed issue with observers not stopping when requested.

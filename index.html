@@ -98,7 +98,7 @@
                 scroller.style.setProperty("overflow-y","auto");
                 scroller.style.setProperty("max-height","95%");
                 header.style.setProperty("display","initial");
-                content.style.setProperty("max-width",`calc(100% - ${toc.clientWidth+25}px)`);
+                content.style.setProperty("max-width",`calc(100% - ${toc.clientWidth+30}px)`);
                 content.scrollTop = y + 250;
             } else {
                 toc.style.setProperty("max-width","8px");
@@ -107,7 +107,7 @@
                 scroller.style.setProperty("overflow-y","hidden");
                 scroller.style.setProperty("max-height","100%");
                 header.style.display = "none";
-                content.style.setProperty("max-width",`calc(100% - ${toc.clientWidth+25}px)`);
+                content.style.setProperty("max-width",`calc(100% - ${toc.clientWidth+35}px)`);
                 content.scrollTop = y - 250;
             }
 
