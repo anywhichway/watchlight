@@ -91,9 +91,8 @@
             scroller = document.getElementsByClassName("toc")[0],
             content = document.getElementById("content");
         function handleGesture({event,right,left}={}) {
-            if(event) event.preventDefault();
             if (left && touchendX < touchstartX) { left(); }
-            else if (right && touchendX > touchstartX) { right(); }
+            else if (right && touchendX > touchstartX && touchstartX<150) { right(); }
         }
         function handleTOC({open,close,toggle}) {
             const y = content.scrollTop;
