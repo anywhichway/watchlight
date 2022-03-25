@@ -181,6 +181,8 @@ class ReactorEvent {
         Object.defineProperty(this,"bubbles",{value:true});
         Object.defineProperty(this,"cancelable",{value:true});
         Object.defineProperty(this,"defaultPrevented",{configurable:true,value:false});
+        Object.defineProperty(this,"stop",{configurable:true,value:false});
+        Object.defineProperty(this,"stopImmediate",{configurable:true,value:false});
         Object.entries(rest).forEach(([key,value]) => {
             if(value!==undefined) Object.defineProperty(this,key,{value});
         })
@@ -196,7 +198,7 @@ class ReactorEvent {
     }
     stopImmediatePropagation() {
         if(this.synchronous) throw new TypeError(`stopImmediatePropagation can't be called on synchronous event handler ${this.synchronous}`)
-        Object.defineProperty(this,"stop",{value:true});
+        Object.defineProperty(this,"stopImmediate",{value:true});
     }
 }
 
@@ -322,15 +324,15 @@ const Reactor = (target,domain={},{bind,parent,path=""}={}) => {
             },
             handleEvent(event) {
                 Object.defineProperty(event,"currentTarget",{configurable:true,value:proxy});
-                if(([...listeners[event.type]?.values()||[]].every(({listener,options}) => {
+                if((!listeners[event.type] || [...listeners[event.type].values()].every(({listener,options}) => {
                     if(options.synchronous) {
                         Object.defineProperty(event,"synchronous",{configurable:true,value:listener})
                     }
                     options.synchronous ? listener(event) : setTimeout(()=> listener(event));
                     if(options.once) local.removeEventListener(listener)
                     return !event.stopImmediate && !event.defaultPrevented;
-                })||true) && parent && !event.stop && !event.stopImmediate && !event.defaultPrevented) {
-                    parent.handleEvent(event);
+                }))) {
+                    if(parent && !event.stop && !event.stopImmediate && !event.defaultPrevented) parent.handleEvent(event);
                 }
             },
             addDependency({target,property}) {
