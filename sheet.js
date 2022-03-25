@@ -1,4 +1,4 @@
-import {observer, reactive} from "./index.js";
+import {observer, reactive} from "./watchlight.js";
 
 const hasKeys = (value) => {
     if(value && typeof(value)==="object") for(const key in value) return true

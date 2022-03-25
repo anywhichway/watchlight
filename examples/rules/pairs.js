@@ -1,4 +1,4 @@
-import {run, not, whilst, assert, reactive} from "../../index.js";
+import {run, not, whilst, assert, reactive} from "../../watchlight.js";
 
 const numberpeople = 100;
 

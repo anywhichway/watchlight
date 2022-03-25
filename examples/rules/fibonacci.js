@@ -1,4 +1,4 @@
-import {run,assert,when,not,reactive} from "../../index.js";
+import {run,assert,when,not,reactive} from "../../watchlight.js";
 
 /* Using rules to compute Fibonacci numbers is not very efficient; however, it is a good may to stress rules across
 a large number of fact combinations. Generating a Fibonacci sequence of 100 creates 1,000,000 combinations of

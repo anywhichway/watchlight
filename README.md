@@ -1,8 +1,8 @@
 <div id="TOC" style="position:fixed;max-height:95vh;height:95vh;">
 
    <div id="header">
-      <div style="font-size:125%;font-weight:bold;"> watchlight v1.0.8b (BETA) </div>
-      <span style="float:right;font-weight:bold">&lt;&lt</span>
+      <div style="font-size:125%;font-weight:bold;"> watchlight v1.0.9b (BETA) </div>
+      <span style="float:right;font-weight:bold">&lt;&lt;</span>
       <i>For when things change.</i>
    </div>
    <div class="toc" style="border:1px solid grey;border-radius:5px;max-height:95%;overflow-x:hidden;overflow-y:auto">
@@ -16,7 +16,7 @@
 ## Introduction
 
 `Watchlight` provides a range of approaches to support reactive programming beyond the DOM and user interface with a 
-light-weight JavaScript module (11K minified, 4K gzipped).
+light-weight JavaScript module (13K minified, 4.5K gzipped).
 
 * <a href="#event-listeners">Event listeners</a> on any reactive object via `addEventListener`.
 * <a href="#observers">Observers</a> via functions wrapping reactive objects, e.g. `observer(() => console.log(myObject.name))` 
@@ -25,7 +25,8 @@ will log the `name` every time it changes.
 <a href="https://www.npmjs.com/package/rools">Rools</a> and modeled after the `Promise` paradigm.
 * <a href="#sheet">Spreadsheets</a> ... no reactive library would be complete without them.
 
-The spreadsheet is provided as a separate file, `./sheet.js` and is not included in the 4K size stated above.
+The spreadsheet is provided as a separate file, `./sheet.js` and is not included in the 4.5K size stated above. Sheet
+is currently 5.5K compressed and 2K gzipped.
 
 `Watchlight` does not use any intermediate languages or transpilation; hence, you can debug all of your code as written 
 using a standard JavaScript debugger.
@@ -94,18 +95,49 @@ provided to cause synchronous dispatch (see <a href="#event-listener-example">ex
 An object with the string property `event` containing an event name, e.g. `{event:"change"}`. Other properties vary 
 based on event type and may include:
 
-* `target` - target of the reactive proxy generating the event
-* `proxy` - the reactive proxy generating the event
+* `target` - the reactive proxy generating the event
+* `currentTarget` - the `target` or object further up the tree as a result of bubbling
 * `property` - the property impacted on the `target`
 * `value` - the current value of the `property`
 * `oldValue` - the previous value of the `property` before the event
 
 Typically, created automatically by `watchlight`, rather than by an application developer.
 
-#### Proxy reactiveObject.addEventListener(eventName:string,listener:function)
+Events will bubble up an object to its containing objects. For the data below, event handlers registered on
+`object` will get events for changes to `aPerson`.
+
+```javascript
+const object = reactive({person:{name:"joe",age:27}}),
+    aPerson = object.person;
+```
+
+The API is very similar to the <a href="https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener" target="_tab">
+browser API of the same name.</a>
+
+All the bubble stopping methods below will throw an error if used on asynchronous event handlers.
+
+#### void reactorEvent.preventDefault()
+
+Prevents the event type from occurring after the current handler. For example, if there is a `change` handler
+and it is the first handler and synchronous, calling `preventDefault` will stop the change from occurring and
+no more handlers will be called.
+
+For rules, this means the actions will not be executed.
+
+#### void reactorEvent.stopPropagation()
+
+Stops bubbling when call from a synchronous listener, but all listeners on the current object will continue to execute.
+
+#### void reactorEvent.stopImmediatePropagation()
+
+Stops bubbling when called from a synchronous listeners, and all subsequent listeners will be blocked.
+
+#### Proxy reactiveObject.addEventListener(eventName:string,listener:function,options:Object)
 
 Adds a `function` as an event listener on the `eventName`. The listener will receive a `ReactorEvent` when the
 `eventName` occurs on the `reactiveObject`, i.e. the listener has the signature `({event,....rest})`.
+
+Options has the surface `{synchronous,once}`.
 
 Returns: The `reactiveObject`.
 
@@ -152,15 +184,15 @@ Fires when the object is removed from working memory.
 
 ```javascript
 const aPerson = reactive({name:"joe",age:27});
-aPerson.addEventListener("defineProperty",({event,target,reactor,property,value}) => {  
-    console.log(event,target);   
+aPerson.addEventListener("defineProperty",({type,target,reactor,property,value}) => {  
+    console.log(type,target);   
 });
-aPerson.addEventListener("change",({event,target,reactor,property,value,oldValue}) => {  
-    console.log(event,target); 
+aPerson.addEventListener("change",({type,target,reactor,property,value,oldValue}) => {  
+    console.log(type,target); 
 });
 aPerson.addEventListener("delete",
-        function myDelete({event,target,reactor,property,oldValue}) { 
-            console.log(event,target);
+        function myDelete({type,target,reactor,property,oldValue}) { 
+            console.log(type,target);
             },
         {synchronous:true});
 
@@ -168,8 +200,8 @@ aPerson.married = true; // invokes the defineProperty handler asynchronously usi
 aPerson.age = 30; // invokes the change handler asynchronously using setTimeout with the oldValue as 27
 delete aPerson.age; // invokes the delete handler synchronously with the oldValue as 30 (due to the change above)
 
-aPerson.removeEventListener("change",({event,target,reactor,property,value,oldValue}) => { 
-    console.log(event,target); 
+aPerson.removeEventListener("change",({type,target,reactor,property,value,oldValue}) => { 
+    console.log(type,target); 
 });
 aPerson.removeEventListener("delete","myDelete"); // removes the delete event listener
 aPerson.removeEventListener("delete",function myDelete() {}); // also removes the delete event listener
@@ -237,7 +269,7 @@ Asynchronously invoked sub-functions, e.g. those inside `setTimeout` or a `Promi
 Returns: The value returned by the function you provide.
 
 ```javascript
-import {reactive,observer} from "../../index.js";
+import {reactive,observer} from "../../watchlight.js";
 
 const user = reactive({name:"mary"});
 const hello = observer(() => {
@@ -289,7 +321,7 @@ Returns: The value returned by the function you provide.
 to be re-invoked or when you want to use JSON.stringify.
 
 ```javascript
-import {reactive,observer,unobserve} from "../../index.js";
+import {reactive,observer,unobserve} from "../../watchlight.js";
 
 const tasks = reactive([
     {name:"task1",duration:2000},
@@ -647,7 +679,8 @@ The second option is to allow comparing with other objects:
 
 ```javascript
 const joe = assert(new Person({name:"joe",age:27}));
-joe.when(function({bound,partner}) {
+// This rule will match Joe with all possible partners.
+joe.when(({bound,partner}) => {
     return partner.name!==bound.name
 },{partner:Person})
     .then(({bound,partner}) => {
@@ -658,8 +691,6 @@ joe.when(function({bound,partner}) {
 Note the domain and the parameterized object as an argument.
 
 The property `bound` MUST be present in the condition argument. And, MUST NOT be present in the `domain`.
-
-This rule will match Joe with all possible partners.
 
 ### Inference Rules Examples
 
@@ -679,20 +710,22 @@ these could be provided by a wrapper.
 
 ### Dimension and Cell
 
-`Dimension` is a psuedo-class. You can't check `instanceof`. Any time an undefined property or sub-property is
-accessed on a `Sheet` a `Dimension` is created. If a `Dimension` is directly assigned a value or a function, it is
-converted into an instance of the psuedo-class `Cell`. `Cells` only exist at leaves. Existing `Dimensions` can
-be overridden and converted into a `Cell` by direct assignment.
+`Dimension` is a psuedo-class, i.e. you can't use `instanceof` to check if something is a `Dimension`. Any time 
+an undefined property or sub-property is accessed on a `Sheet` a `Dimension` is created. If a `Dimension` is 
+directly assigned a value or a function, it is converted into an instance of the psuedo-class `Cell`. `Cells` 
+only exist at leaf nodes of `Dimensions`. Existing `Dimensions` can be overridden and converted into a `Cell`
+by direct assignment of a value or function.
 
-Cells in a `Sheet` have a function `withFormat` that can take either a string or a function as an argument. If a string,
-then it should be an un-interpolated string template literal that accesses `this.valueOf()`. If a function, it will
-get the cell as its `this` value, so it can call `this.valueOf()`. It should return a string.
+Cells in a `Sheet` with functions assigned, provide a method `withFormat` that can take either a string or a 
+function as an argument. If a string, then it should be an un-interpolated string template literal that accesses
+`this.valueOf()`. If a function, it will get the cell as its `this` value, so it can call `this.valueOf()`. It 
+should return a string.
 
 The code below can be <a href="./examples/sheets/basic.html" target=_tab>run</a> or <a href="./examples/sheets/basic.js">viewed</a>
 in the <a href="./examples/index.htm" target=_tab>examples</a> directory.
 
 ```javascript
-import {Sheet} from "../Sheet.js";
+import {Sheet} from "../sheet.js";
 
 const sheet = Sheet();
 sheet.A[0]; // no assignment is made, so sheet.A[0] will automatically be a Dimension when accessed
@@ -881,9 +914,13 @@ A custom commercial license. Contact syblackwell@anywhichway.com.
 ## Change History 
 Reverse Chronological Order
 
-2022-03-25 v1.0.8b Documentation layout.
+2022-03-25 v1.0.9b Documentation content updates. Renamed main entry point to `watchlight.js`. More unit tests 
+and event bubbling work.
 
-2022-03-24 v1.0.7b Documentation layout. More unit tests. Fixed issues with checking presence of an removing event handlers.
+2022-03-25 v1.0.8b Documentation layout. Added event bubbling. Renamed `event` property in `ReactorEvent` to `type`.
+
+2022-03-24 v1.0.7b Documentation layout. More unit tests. Fixed issues with checking presence of and removing 
+event handlers.
 
 2022-03-24 v1.0.6b Documentation TOC tray added.
 

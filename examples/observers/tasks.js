@@ -1,4 +1,4 @@
-import {reactive,observer,unobserve} from "../../index.js";
+import {reactive,observer,unobserve} from "../../watchlight.js";
 
 const tasks = reactive([{name:"task1",duration:2000},{name:"task2",duration:3000},{name:"task3",duration:1000}, {name:"task4",duration:2000}]);
 

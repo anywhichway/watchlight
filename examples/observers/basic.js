@@ -1,4 +1,4 @@
-import {reactive,observer} from "../../index.js";
+import {reactive,observer} from "../../watchlight.js";
 
 const user = reactive({name:"mary",contactInfo:{phone:"555-555-5555"}});
 const hello = observer(() => {

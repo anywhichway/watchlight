@@ -1,9 +1,9 @@
 {
   "name": "watchlight",
-  "version": "1.0.8b",
+  "version": "1.0.9b",
   "description": "A light weight, comprehensive, reactive framework for business logic.",
   "type": "module",
-  "main": "index.js",
+  "main": "watchlight.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

@@ -1,4 +1,4 @@
-import {reactive,run,assert,retract,when,whilst,not,exists,observer,unobserve,deepEqual} from "../index.js";
+import {reactive,run,assert,retract,when,whilst,not,exists,observer,unobserve,deepEqual} from "../watchlight.js";
 
 var mary, joe;
 

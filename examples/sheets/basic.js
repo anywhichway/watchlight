@@ -1,4 +1,4 @@
-import {Sheet} from "../../Sheet.js";
+import {Sheet} from "../../sheet.js";
 
 const sheet = Sheet();
 sheet.A[1] = 1; // dimensions and cells are created automatically

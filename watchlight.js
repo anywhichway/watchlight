@@ -175,15 +175,34 @@ class Agenda extends Map {
 const agenda = new Agenda();
 
 class ReactorEvent {
-    constructor({event,...rest}) {
-        this.event = event;
-        Object.assign(this,rest);
+    constructor({type,...rest}) {
+        Object.defineProperty(this,"type",{value:type});
+        Object.defineProperty(this,"timestamp",{value:Date.now()});
+        Object.defineProperty(this,"bubbles",{value:true});
+        Object.defineProperty(this,"cancelable",{value:true});
+        Object.defineProperty(this,"defaultPrevented",{configurable:true,value:false});
+        Object.entries(rest).forEach(([key,value]) => {
+            if(value!==undefined) Object.defineProperty(this,key,{value});
+        })
+        Object.defineProperty(this,"currentTarget",{configurable:true,value:this.target});
+    }
+    preventDefault() {
+        if(this.synchronous) throw new TypeError(`preventDefault can't be called on synchronous event handler ${this.synchronous}`)
+        Object.defineProperty(this,"defaultPrevented",{value:true});
+    }
+    stopPropagation() {
+        if(this.synchronous) throw new TypeError(`stopPropagation can't be called on synchronous event handler ${this.synchronous}`)
+        Object.defineProperty(this,"stop",{value:true});
+    }
+    stopImmediatePropagation() {
+        if(this.synchronous) throw new TypeError(`stopImmediatePropagation can't be called on synchronous event handler ${this.synchronous}`)
+        Object.defineProperty(this,"stop",{value:true});
     }
 }
 
 const isReactor = (target) => target && typeof(target)==="object" && target["__reactiveuid__"];
 
-const Reactor = (target,domain={},{bind,path=""}={}) => {
+const Reactor = (target,domain={},{bind,parent,path=""}={}) => {
     const type= typeof(target);
     if(!target || (type!=="object" && type!=="function")) return target;
     if(target.__reactiveuid__) return target;
@@ -197,9 +216,6 @@ const Reactor = (target,domain={},{bind,path=""}={}) => {
         ctors = Object.entries(domain), // the domain of arguments for a function
         continues = new Set(), // actions to invoke when a reactive object changes or a reactive function is satisfied
         whens = new Map(),
-        handleEvent = (event) => {
-            listeners[event.event]?.forEach(({listener,options}) => options.synchronous ? listener(event) : setTimeout(()=> listener(event)))
-        },
         local = {
             __reactiveuid__: uid(),
             valueOf() {
@@ -208,24 +224,28 @@ const Reactor = (target,domain={},{bind,path=""}={}) => {
             setValue(value) {
                 proxy[Symbol.for("primitive")]=value;
             },
-            retract() {
+            retract({source}={}) {
                 let result;
                 if(type==="object") {
-                    if(trace.retract) console.log("Reactor:retract",target)
-                    const wm = workingMemory.get(ctor);
-                    if(wm) {
-                        if(wm.has(proxy)) {
-                            wm.delete(proxy);
-                            result = proxy;
-                            agenda.removeBindingsIncluding(proxy);
-                            handleEvent(new ReactorEvent({event:"retract",proxy,target}));
+                    const event = new ReactorEvent({type:"retract",target:proxy,source});
+                    local.handleEvent(event);
+                    if(!event.defaultPrevented) {
+                        if(trace.retract) console.log("Reactor:retract",target)
+                        const wm = workingMemory.get(ctor);
+                        if(wm) {
+                            if(wm.has(proxy)) {
+                                wm.delete(proxy);
+                                result = proxy;
+                                agenda.removeBindingsIncluding(proxy);
+
+                            }
                         }
+                        Object.entries(dependents).forEach(([key,objects]) => {
+                            objects.forEach((dependent) => retract(dependent));
+                            objects.clear();
+                            delete dependents[key];
+                        })
                     }
-                    Object.entries(dependents).forEach(([key,objects]) => {
-                        objects.forEach((dependent) => retract(dependent));
-                        objects.clear();
-                        delete dependents[key];
-                    })
                 }
                 return result;
             },
@@ -282,9 +302,9 @@ const Reactor = (target,domain={},{bind,path=""}={}) => {
                         .forEach((property) => object.addDependency({target:proxy,property})));
                 return proxy;
             },
-            addEventListener(eventName,listener,{synchronous}={}) {
+            addEventListener(eventName,listener,{synchronous,once}={}) {
                 if(!["defineProperty","change","delete","fire","retract"].includes(eventName)) throw new TypeError(`Invalid event name: ${eventName}`);
-                (listeners[eventName] ||= new Map()).set(listener,{listener,options:{synchronous}});
+                (listeners[eventName] ||= new Map()).set(listener,{listener,options:{synchronous,once}});
                 return proxy;
             },
             hasEventListener(eventName,listener) {
@@ -299,6 +319,19 @@ const Reactor = (target,domain={},{bind,path=""}={}) => {
                     if(listener===key || listener.name===key.name || listener===key.name  || listener+""===key+"") listeners[eventName].delete(key);
                 })
                 return proxy;
+            },
+            handleEvent(event) {
+                Object.defineProperty(event,"currentTarget",{configurable:true,value:proxy});
+                if(([...listeners[event.type]?.values()||[]].every(({listener,options}) => {
+                    if(options.synchronous) {
+                        Object.defineProperty(event,"synchronous",{configurable:true,value:listener})
+                    }
+                    options.synchronous ? listener(event) : setTimeout(()=> listener(event));
+                    if(options.once) local.removeEventListener(listener)
+                    return !event.stopImmediate && !event.defaultPrevented;
+                })||true) && parent && !event.stop && !event.stopImmediate && !event.defaultPrevented) {
+                    parent.handleEvent(event);
+                }
             },
             addDependency({target,property}) {
                 dependents[property] ||= new Set();
@@ -405,7 +438,7 @@ const Reactor = (target,domain={},{bind,path=""}={}) => {
                 value = target[property];
                 if(property==="prototype" || property.toString()=="Symbol(Symbol.unscopables)") return value;
                 const vtype = typeof(value);
-                if(value && vtype==="object") value = childReactors[property] ||= Reactor(value,undefined,{path:path ? path + "." + property : property}); // only create one reactor
+                if(value && vtype==="object") value = childReactors[property] ||= Reactor(value,undefined,{parent:proxy,path:path ? path + "." + property : property}); // only create one reactor
                 if(type==="object") {
                     if(CURRENTWHEN) {
                         const reactors = ctor.functions[property] ||= new Set();
@@ -436,21 +469,29 @@ const Reactor = (target,domain={},{bind,path=""}={}) => {
                     oldValue = target[property]
                 }
                 if(oldValue!==value) {
-                    if(setprimitive) target = new ctor(value);
-                    else target[property] = value;
-                    if(childReactors[property]) {
-                        childReactors[property] = Reactor(value)
+                    let event;
+                    if(oldValue===undefined) {
+                        event = new ReactorEvent({type:"defineProperty",target:proxy,property,value})
+                    } else {
+                        event = new ReactorEvent({type:"change",target:proxy,property,value,oldValue})
                     }
-                    if(dependents[property]) {
-                        dependents[property].forEach((target) => retract(target));
-                        dependents[property].clear();
+                    local.handleEvent(event);
+                    if(!event.defaultPrevented) {
+                        if(setprimitive) target = new ctor(value);
+                        else target[property] = value;
+                        if(childReactors[property]) {
+                            childReactors[property] = Reactor(value)
+                        }
+                        if(dependents[property]) {
+                            dependents[property].forEach((target) => retract(target,{source:proxy}));
+                            dependents[property].clear();
+                        }
+                        ctor.functions[property]?.forEach((f) => f.with(proxy));
+                        observers[property]?.forEach((f) => f.stopped || f());
                     }
-                    if(oldValue===undefined) handleEvent(new ReactorEvent({event:"defineProperty",target,reactor:proxy,property,value}));
-                    else handleEvent(new ReactorEvent({event:"change",target,reactor:proxy,property,value,oldValue}));
-                    ctor.functions[property]?.forEach((f) => f.with(proxy));
-                    observers[property]?.forEach((f) => f.stopped || f());
                 } else if(typeof(value)==="function" && value.valueOf) { // support for dependency "cells" on a table
                     observers[property]?.forEach((f) => f.stopped || f());
+                    return value;
                 }
                 return true;
             },
@@ -458,10 +499,13 @@ const Reactor = (target,domain={},{bind,path=""}={}) => {
                 const oldValue = target[property];
                 delete target[property];
                 if(type==="object") {
-                    dependents[property]?.forEach((target) => retract(target));
-                    dependents[property]?.clear();
-                    handleEvent(new ReactorEvent({event:"delete",target,reactor:proxy,property,oldValue}));
-                    ctor.functions[property]?.forEach((f) => f.with(proxy));
+                    const event = new ReactorEvent({type:"delete",target:proxy,property,oldValue});
+                    local.handleEvent(event);
+                    if(!event.defaultPrevented) {
+                        dependents[property]?.forEach((target) => retract(target,{source:proxy}));
+                        dependents[property]?.clear();
+                        ctor.functions[property]?.forEach((f) => f.with(proxy));
+                    }
                 }
                 return true;
             },
@@ -472,9 +516,12 @@ const Reactor = (target,domain={},{bind,path=""}={}) => {
                 let result = target.call(thisArg,binding,...args);
                 CURRENTWHEN = null;
                 if(result) {
-                    handleEvent(new ReactorEvent({event:"fire",target,reactor:proxy,thisArg,argumentList:[binding,...args]}));
                     stats.succeeded++;
-                    result = doThen(result,binding);
+                    const event = new ReactorEvent({type:"fire",target:proxy,thisArg,argumentList:[binding,...args]});
+                    local.handleEvent(event);
+                    if(!event.defaultPrevented) {
+                        result = doThen(result,binding);
+                    }
                     //if(!bindings.some((b) => Object.entries(binding).every(([key,value]) => b[key]===value))) {
                      //   bindings[bindings.length] = binding; // slightly faster than push
                     //}
@@ -516,14 +563,14 @@ const Reactor = (target,domain={},{bind,path=""}={}) => {
 }
 const listeners = {};
 Reactor.handleEvent = function(event) {
-    listeners[event.event]?.forEach(listener => setTimeout(()=> listener(event)))
+    listeners[event.type]?.forEach(listener => setTimeout(()=> listener(event)))
 };
-Reactor.addEventListener = function(event,f) {
-    (listeners[event] ||= new Set()).add(f);
+Reactor.addEventListener = function(type,f) {
+    (listeners[type] ||= new Set()).add(f);
     return Reactor;
 };
-Reactor.removeEventListener = function(event,f) {
-    (listeners[event] ||= new Set()).delete(f);
+Reactor.removeEventListener = function(type,f) {
+    (listeners[type] ||= new Set()).delete(f);
     return Reactor;
 };
 
@@ -554,7 +601,7 @@ const reactive = (target) => {
     return Reactor(target);
 }
 
-const assert = (target) => {
+const assert = (target,{source}={}) => {
     const value = isReactor(target) ? target : reactive(target),
         ctor = Object.getPrototypeOf(target).constructor;
     let wm = workingMemory.get(ctor);
@@ -562,14 +609,17 @@ const assert = (target) => {
         wm = new Set();
         workingMemory.set(ctor,wm);
     }
-    wm.add(value);
-    Reactor.handleEvent(new ReactorEvent({event:"assert",value}));
-    functionsByClass.getAll(ctor).forEach((f) => f.with(value));
+    const event = new ReactorEvent({type:"assert",source,target:value});
+    Reactor.handleEvent(event);
+    if(!event.defaultPrevented) {
+        wm.add(value);
+        functionsByClass.getAll(ctor).forEach((f) => f.with(value));
+    }
     return value;
 }
 
-const retract = (target) => {
-    return target.retract();
+const retract = (target,{source}={}) => {
+    return target.retract({source});
 }
 const exists = (object,test) => {
     const entries = Object.entries(object),
@@ -605,14 +655,10 @@ const whilst = (target,result,domain={},{bind,onassert}={}) => {
             let data = result(objects);
             if(data && data.constructor===Array) { // do not use Array.isArray, they may be custom domain
                 data = data.map((data) => {
-                    const proxy =  assert(data).withConditions(conditions);
-                    if(onassert) onassert(new ReactorEvent({event:"assert",proxy,target:data}));
-                    return proxy;
+                    return assert(data,{source:proxy}).withConditions(conditions);
                 })
             } else if(data) {
-                const proxy = assert(data).withConditions(conditions);
-                if(onassert) onassert(new ReactorEvent({event:"assert",proxy,target:data}));
-                data = proxy;
+                data = assert(data,{source:proxy}).withConditions(conditions);
             }
             return data;
         });
