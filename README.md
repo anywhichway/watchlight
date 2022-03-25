@@ -1,12 +1,10 @@
 <div id="TOC" style="position:fixed;max-height:95vh;height:95vh;">
-
    <div id="header">
       <div style="font-size:125%;font-weight:bold;"> watchlight v1.0.9b (BETA) </div>
       <span style="float:right;font-weight:bold">&lt;&lt;</span>
       <i>For when things change.</i>
    </div>
    <div class="toc" style="border:1px solid grey;border-radius:5px;max-height:95%;overflow-x:hidden;overflow-y:auto">
-   
    </div>
 </div>
 <div id="content" style="float:right;padding-top:0px;min-width:200px;max-height:100vh;overflow:auto">
