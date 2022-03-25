@@ -132,8 +132,8 @@
         })
         content.addEventListener('touchend', event => {
             touchendX = event.changedTouches[0].screenX;
-            touchendY = event.changedTouches[0].screenY
-            handleGesture({right:()=>handleTOC({event,open:true})})
+            touchendY = event.changedTouches[0].screenY;
+            handleGesture({right:()=>handleTOC({event,open:true}),left:()=>event.preventDefault()});
         })
         toggle.addEventListener("click",() => {
             handleTOC({toggle:true});
