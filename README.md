@@ -835,7 +835,7 @@ console.log(sheet.tab1.A[1].path); // logs "tab1.A.1"
 
 #### number len(value:any)
 
-Throws `TypeError` if `value` soe not have a `length` or `size` property or function.
+Throws `TypeError` if `value` does not have a `length` or `size` property or function.
 
 ### Math Functions
 
