@@ -823,72 +823,72 @@ console.log(sheet.tab1.A[1].path); // logs "tab1.A.1"
 
 ### Math Sheet Functions
 
-#### average(values:array|Dimension,{start:number|string,end:number|string})
+#### number average(values:array|Dimension,{start:number|string,end:number|string})
 
-#### exp(number,power)
+#### number exp(number,power)
 
-#### log10(value:number)
+#### number log10(value:number)
 
-#### max(values:array|Dimension,{start:number|string,end:number|string})
+#### number max(values:Array<number>|Dimension,{start:number|string,end:number|string})
 
-#### median(numbers:Array<number>)
+#### number median(numbers:Array<number>)
 
-#### min(values:array|Dimension,{start:number|string,end:number|string})
+#### number min(values:Array<number>|Dimension,{start:number|string,end:number|string})
 
-#### product(values:array|Dimension,{start:number|string,end:number|string})
+#### number product(values:Array<number>|Dimension,{start:number|string,end:number|string})
 
-#### stdev(values:array|Dimension,{start:number|string,end:number|string})
+#### number stdev(values:Array<number>|Dimension,{start:number|string,end:number|string})
 
-#### sum(values:array|Dimension,{start:number|string,end:number|string})
+#### number sum(values:Array<number>|Dimension,{start:number|string,end:number|string})
 
-#### variance(values:array|Dimension,{start:number|string,end:number|string})
+#### number variance(values:Array<number>|Dimension,{start:number|string,end:number|string})
 
-#### zscores(values:array|Dimension,{start:number|string,end:number|string})
+#### number zscores(values:Array<number>|Dimension,{start:number|string,end:number|string})
 
 Returns Array.
 
 ### Trigonometry Sheet Functions
 
-#### acos(value:number)
-#### acosh(value:number) 
-#### asin(value:number)
-#### asinh(value:number)
-#### atan(value:number) 
-#### atan2(value:number) 
-#### cos(value:number) 
-#### cosh(value:number) 
-#### pi() 
-#### rand() 
-#### sin(value:number)
-#### tan(value:number) 
-#### tanh(value:number) 
+#### number acos(value:number)
+#### number acosh(value:number) 
+#### number asin(value:number)
+#### number asinh(value:number)
+#### number atan(value:number) 
+#### number atan2(value:number) 
+#### number cos(value:number) 
+#### number cosh(value:number) 
+#### number pi() 
+#### number rand()
+#### number sin(value:number)
+#### number tan(value:number) 
+#### number tanh(value:number) 
 
 ### Coercion Sheet Functions
 
-#### int(value:string|number)
+#### number int(value:string|number)
 
-#### float(value:string|number)
+#### number float(value:string|number)
 
-#### lower(value:string) 
+#### string lower(value:string) 
 
-#### numbers(source:object,start:number|string,end:number|string)
+#### Array<number> numbers(source:object,start:number|string,end:number|string)
 
 `source` can be an Array or a `Sheet` dimension. If `end` is less that `start` the return value is reversed.
 
 Returns an array of all numbers from the object based on the keys between and including `start` and `end`.
 
-#### numbersa(values:array|Dimension,{start:number|string,end:number|string})
+#### Array<numbers> numbersa(values:Array<number>|Dimension,{start:number|string,end:number|string})
 
 `source` can be an Array or a `Sheet` dimension. If `end` is less that `start` the return value is reversed.
 
 Returns an array of all values coercible into numbers from the object based on the keys between and including 
 `start` and `end`. Strings are parsed as floats and booleans are converted to 1s and 0s.
 
-#### upper(value:string)
+#### string upper(value:string)
 
-#### value(data:any)
+#### number value(data:any)
 
-#### values(values:array|Dimension,{start:number|string,end:number|string})
+#### Array<any> values(values:Array<any>|Dimension,{start:number|string,end:number|string})
 
 `source` can be an Array or a `Sheet` dimension. If `end` is less that `start` the return value is reversed.
 
