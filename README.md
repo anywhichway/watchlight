@@ -132,7 +132,7 @@ Stops bubbling when call from a synchronous listener, but all listeners on the c
 
 Stops bubbling when called from a synchronous listeners, and all subsequent listeners will be blocked.
 
-#### Proxy reactiveObject.addEventListener(eventName:string, listener:function, options:Object)
+#### Proxy reactiveObject.addEventListener( eventName:string, listener:function, options:Object)
 
 Adds a `function` as an event listener on the `eventName`. The listener will receive a `ReactorEvent` when the
 `eventName` occurs on the `reactiveObject`, i.e. the listener has the signature `({event,....rest})`.
@@ -141,14 +141,14 @@ The `options` argument has the surface `{synchronous,once}`.
 
 Returns: The `reactiveObject`.
 
-#### boolean reactiveObject.hasEventListener(eventName:string, listener:function|string)
+#### boolean reactiveObject.hasEventListener( eventName:string, listener:function|string)
 
 Checks for existence of function of the same name or in the case of anonymous functions same string representation as a 
 listener for `eventName` on the `reactiveObject`.
 
 Returns: The `true` or `false`.
 
-#### Proxy reactiveObject.removeEventListener(eventName:string, listener:function|string)
+#### Proxy reactiveObject.removeEventListener( eventName:string, listener:function|string)
 
 Removes a listener for `eventName` with the same name or that is the function on the `reactiveObject`.
 
