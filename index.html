@@ -92,9 +92,10 @@
             header = document.getElementById("header"),
             scroller = document.getElementsByClassName("toc")[0],
             content = document.getElementById("content");
+        document.getElementById("toggle-button").style.setProperty("display","inline");
         function handleGesture({event,right,left}={}) {
             if (left && touchendX < touchstartX && Math.abs(touchstartY-touchendY)<100 && Math.abs(touchstartX-touchendX)>75) { left(); }
-            else if (right && touchendX > touchstartX && touchstartX<100) { right(); }
+            else if (right && touchendX > touchstartX && touchstartX<125) { right(); }
         }
         function handleTOC({open,close,toggle}) {
             const y = content.scrollTop;

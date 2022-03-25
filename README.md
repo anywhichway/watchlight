@@ -1,7 +1,7 @@
 <div id="TOC" style="position:fixed;max-height:95vh;height:95vh;">
    <div id="header">
-      <div style="font-size:125%;font-weight:bold;"> watchlight v1.0.10b (BETA) </div>
-      <span style="float:right;font-weight:bold">&lt;&lt;</span>
+      <div style="font-size:125%;font-weight:bold;"> <a href="https://watchlight.dev">watchlight.dev</a> v1.0.11b (BETA) </div>
+      <span id="toggle-button" style="display:none;float:right;font-weight:bold">&lt;&lt;</span>
       <i>For when things change.</i>
    </div>
    <div class="toc" style="border:1px solid grey;border-radius:5px;max-height:95%;overflow-x:hidden;overflow-y:auto">
@@ -37,6 +37,8 @@ using a standard JavaScript debugger.
 ```shell
 npm install watchlight
 ```
+
+The repository is at <div><a href="https://github.com/anywhichway/watchlight">https://github.com/anywhichway/watchlight</a></div>
 
 Transpiling and minifying is left to the developer using the library.
 
@@ -437,7 +439,7 @@ when(({object}) => true,{object:Object})
 assert(new Person({name:"joe"}));
 assert({count:1});
 ```
-prints 
+logs 
 
 ```shell
 Person {name:"joe"}
@@ -690,7 +692,7 @@ Note the domain and the parameterized object as an argument.
 
 The property `bound` MUST be present in the condition argument. And, MUST NOT be present in the `domain`.
 
-### Inference Rules Examples
+### Rule Example Files
 
 <a href="./examples/rules/fibonacci.html" target=_tab>Fibonacci sequence generation</a>:  
 <a href="./examples/rules/fibonacci.js" target=_tab>source</a>.
@@ -925,6 +927,8 @@ A custom commercial license. Contact syblackwell@anywhichway.com.
 
 ## Change History 
 Reverse Chronological Order
+
+2022-03-25 v1.0.11b Documentation content updates.
 
 2022-03-25 v1.0.10b Documentation content updates. Improved swipe behavior of TOC.
 
