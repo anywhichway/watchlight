@@ -91,8 +91,8 @@
             scroller = document.getElementsByClassName("toc")[0],
             content = document.getElementById("content");
         function handleGesture({right,left}={}) {
-            if (touchendX < touchstartX) left()
-            else if (touchendX > touchstartX) right()
+            if (left && touchendX < touchstartX) left()
+            else if (right && touchendX > touchstartX) right()
         }
         function handleTOC({open,close,toggle}) {
             const y = content.scrollTop;
@@ -117,12 +117,19 @@
             }
         }
         content.style.setProperty("max-width",`calc(100% - ${toc.clientWidth+30}px)`);
-        document.addEventListener('touchstart', e => {
+        toc.addEventListener('touchstart', e => {
             touchstartX = e.changedTouches[0].screenX
         })
-        document.addEventListener('touchend', e => {
+        toc.addEventListener('touchend', e => {
             touchendX = e.changedTouches[0].screenX
-            handleGesture({right:()=>handleTOC({open:true}),left:()=>handleTOC({close:true})})
+            handleGesture({left:()=>handleTOC({close:true})})
+        })
+        content.addEventListener('touchstart', e => {
+            touchstartX = e.changedTouches[0].screenX
+        })
+        content.addEventListener('touchend', e => {
+            touchendX = e.changedTouches[0].screenX
+            handleGesture({right:()=>handleTOC({open:true})})
         })
         toggle.addEventListener("click",() => {
             handleTOC({toggle:true});
