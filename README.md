@@ -24,7 +24,7 @@ will log the `name` every time it changes.
 * <a href="#sheet">Spreadsheets</a> ... no reactive library would be complete without them.
 
 The spreadsheet is provided as a separate file, `./sheet.js` and is not included in the 4.5K size stated above. Sheet
-is currently 5.5K compressed and 2K gzipped.
+is currently 5.5K minified and 2K gzipped.
 
 `Watchlight` does not use any intermediate languages or transpilation; hence, you can debug all of your code as written 
 using a standard JavaScript debugger.
