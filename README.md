@@ -7,7 +7,7 @@
    <div class="toc" style="border:1px solid grey;border-radius:5px;max-height:95%;overflow-x:hidden;overflow-y:auto">
    </div>
 </div>
-<div id="content" style="float:right;padding-left:10px;padding-top:0px;min-width:200px;max-height:100vh;overflow:auto">
+<div id="content" style="float:right;padding-top:0px;min-width:200px;max-height:100vh;overflow:auto">
 
 <div>A light-weight, comprehensive, reactive framework for business logic and when things change.</div>
 
@@ -465,7 +465,7 @@ when(({person}) => person.age<21,{person:Person})
     // NOTE: then gets the newly created Combo object as its argument
 ```
 
-### Inference Rules API
+### Rules API
 
 #### Object Partial(constructor:function,data:object)
 
