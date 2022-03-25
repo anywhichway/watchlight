@@ -1,6 +1,6 @@
 <div id="TOC" style="position:fixed;max-height:95vh;height:95vh;">
    <div id="header">
-      <div style="font-size:125%;font-weight:bold;"> <a href="https://watchlight.dev">watchlight.dev</a> v1.0.11b (BETA) </div>
+      <div style="font-size:125%;font-weight:bold;"> <a href="https://watchlight.dev">watchlight.dev</a> v1.0.11 beta</div>
       <span id="toggle-button" style="display:none;float:right;font-weight:bold">&lt;&lt;</span>
       <i>For when things change.</i>
    </div>
