@@ -84,14 +84,19 @@
         dom.body.style = "overflow:hidden;height:100%;max-height:100%"
         document.body.replaceWith(dom.body);
 
+        let touchstartX = 0
+        let touchendX = 0
         const toggle = document.getElementById("TOC"),
             header = document.getElementById("header"),
             scroller = document.getElementsByClassName("toc")[0],
             content = document.getElementById("content");
-        content.style.setProperty("max-width",`calc(100% - ${toc.clientWidth+30}px)`);
-        toggle.addEventListener("click",({target}) => {
+        function handleGesture({right,left}={}) {
+            if (touchendX < touchstartX) left()
+            else if (touchendX > touchstartX) right()
+        }
+        function handleTOC({open,close,toggle}) {
             const y = content.scrollTop;
-            if(toc.style["max-width"]=="8px") {
+            if(toc.style["max-width"]=="8px" && (open || toggle)) {
                 toc.style.setProperty("max-width","");
                 toc.style.setProperty("max-height","95vh");
                 toc.style.setProperty("height","95vh");
@@ -100,17 +105,27 @@
                 header.style.setProperty("display","initial");
                 content.style.setProperty("max-width",`calc(100% - ${toc.clientWidth+30}px)`);
                 content.scrollTop = y + 250;
-            } else {
+            } else if(toc.style["max-width"]!=="8px" && (close || toggle)) {
                 toc.style.setProperty("max-width","8px");
                 toc.style.setProperty("max-height","98vh");
                 toc.style.setProperty("height","98vh");
                 scroller.style.setProperty("overflow-y","hidden");
                 scroller.style.setProperty("max-height","100%");
                 header.style.display = "none";
-                content.style.setProperty("max-width",`calc(100% - ${toc.clientWidth+35}px)`);
+                content.style.setProperty("max-width",`calc(100% - ${toc.clientWidth+30}px)`);
                 content.scrollTop = y - 250;
             }
-
+        }
+        content.style.setProperty("max-width",`calc(100% - ${toc.clientWidth+30}px)`);
+        document.addEventListener('touchstart', e => {
+            touchstartX = e.changedTouches[0].screenX
+        })
+        document.addEventListener('touchend', e => {
+            touchendX = e.changedTouches[0].screenX
+            handleGesture({right:()=>handleTOC({open:true}),left:()=>handleTOC({close:true})})
+        })
+        toggle.addEventListener("click",() => {
+            handleTOC({toggle:true});
         });
     </script>
 </head>
