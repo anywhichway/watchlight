@@ -130,7 +130,7 @@ Stops bubbling when call from a synchronous listener, but all listeners on the c
 
 Stops bubbling when called from a synchronous listeners, and all subsequent listeners will be blocked.
 
-#### Proxy reactiveObject.addEventListener(eventName:string,listener:function,options:Object)
+#### Proxy reactiveObject.addEventListener(eventName:string, listener:function, options:Object)
 
 Adds a `function` as an event listener on the `eventName`. The listener will receive a `ReactorEvent` when the
 `eventName` occurs on the `reactiveObject`, i.e. the listener has the signature `({event,....rest})`.
@@ -139,14 +139,14 @@ The `options` argument has the surface `{synchronous,once}`.
 
 Returns: The `reactiveObject`.
 
-#### boolean reactiveObject.hasEventListener(eventName:string,listener:function|string)
+#### boolean reactiveObject.hasEventListener(eventName:string, listener:function|string)
 
 Checks for existence of function of the same name or in the case of anonymous functions same string representation as a 
 listener for `eventName` on the `reactiveObject`.
 
 Returns: The `true` or `false`.
 
-#### Proxy reactiveObject.removeEventListener(eventName:string,listener:function|string)
+#### Proxy reactiveObject.removeEventListener(eventName:string, listener:function|string)
 
 Removes a listener for `eventName` with the same name or that is the function on the `reactiveObject`.
 
@@ -585,7 +585,7 @@ the properties MUST be classes or constructors.
 Returns: Reactive `Proxy` for `condition`.
 
 <a id="whilst"></a>
-#### Proxy whilst(condition:function,conclusion:function,domain:object,options:Object)
+#### Proxy whilst(condition:function, conclusion:function, domain:object, options:Object)
 
 Rules created with `whilst` have a conclusion that is logically dependent on the continued truth of the `condition`.
 
@@ -885,13 +885,13 @@ Returns Array.
 
 #### string lower(value:string) 
 
-#### Array<number> numbers(source:Array<any>|Dimension,start:number|string,end:number|string)
+#### Array<number> numbers(source:Array<any>|Dimension, start:number|string, end:number|string)
 
 `source` can be an Array or a `Sheet` dimension. If `end` is less that `start` the return value is reversed.
 
 Returns an array of all numbers from the object based on the keys between and including `start` and `end`.
 
-#### Array<numbers> numbersa(values:Array<number>|Dimension,{start:number|string,end:number|string})
+#### Array<numbers> numbersa(values:Array<number>|Dimension, {start:number|string, end:number|string})
 
 `source` can be an Array or a `Sheet` dimension. If `end` is less that `start` the return value is reversed.
 
@@ -902,7 +902,7 @@ Returns an array of all values coercible into numbers from the object based on t
 
 #### number value(data:any)
 
-#### Array<any> values(values:Array<any>|Dimension,{start:number|string,end:number|string})
+#### Array<any> values(values:Array<any>|Dimension, {start:number|string, end:number|string})
 
 `source` can be an Array or a `Sheet` dimension. If `end` is less that `start` the return value is reversed.
 
