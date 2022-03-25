@@ -90,9 +90,9 @@
             header = document.getElementById("header"),
             scroller = document.getElementsByClassName("toc")[0],
             content = document.getElementById("content");
-        function handleGesture({right,left}={}) {
-            if (left && touchendX < touchstartX) left()
-            else if (right && touchendX > touchstartX) right()
+        function handleGesture({event,right,left}={}) {
+            if (left && touchendX < touchstartX) { left(); !event || event.preventDefault();  }
+            else if (right && touchendX > touchstartX) { right(); !event || event.preventDefault(); }
         }
         function handleTOC({open,close,toggle}) {
             const y = content.scrollTop;
@@ -117,19 +117,19 @@
             }
         }
         content.style.setProperty("max-width",`calc(100% - ${toc.clientWidth+30}px)`);
-        toc.addEventListener('touchstart', e => {
-            touchstartX = e.changedTouches[0].screenX
+        toc.addEventListener('touchstart', event => {
+            touchstartX = event.changedTouches[0].screenX
         })
-        toc.addEventListener('touchend', e => {
-            touchendX = e.changedTouches[0].screenX
-            handleGesture({left:()=>handleTOC({close:true})})
+        toc.addEventListener('touchend', event => {
+            touchendX = event.changedTouches[0].screenX
+            handleGesture({left:()=>handleTOC({event,close:true})})
         })
-        content.addEventListener('touchstart', e => {
-            touchstartX = e.changedTouches[0].screenX
+        content.addEventListener('touchstart', event => {
+            touchstartX = event.changedTouches[0].screenX
         })
-        content.addEventListener('touchend', e => {
-            touchendX = e.changedTouches[0].screenX
-            handleGesture({right:()=>handleTOC({open:true})})
+        content.addEventListener('touchend', event => {
+            touchendX = event.changedTouches[0].screenX
+            handleGesture({right:()=>handleTOC({event,open:true})})
         })
         toggle.addEventListener("click",() => {
             handleTOC({toggle:true});
