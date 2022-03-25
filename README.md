@@ -913,7 +913,7 @@ A custom commercial license. Contact syblackwell@anywhichway.com.
 Reverse Chronological Order
 
 2022-03-25 v1.0.9b Documentation content updates. Renamed main entry point to `watchlight.js`. More unit tests 
-and event bubbling work.
+and event bubbling work. Fixed issue with observers not stopping when requested.
 
 2022-03-25 v1.0.8b Documentation layout. Added event bubbling. Renamed `event` property in `ReactorEvent` to `type`.
 

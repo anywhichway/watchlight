@@ -671,12 +671,12 @@ const observer = (f,thisArg,...args) => {
     let observer, errors = (e) => { throw(e) };
     if(Object.getPrototypeOf(f)===Object.getPrototypeOf(async ()=>{})) {
         observer = async function(...args) {
-            if (CURRENTOBSERVER !== observer) {
+            if (CURRENTOBSERVER !== observer  && !observer.stopped) {
                 let result;
                 CURRENTOBSERVER = observer;
                 try {
                     result = await f.call(this, ...args);
-                } catch(e) {
+                } catch (e) {
                     result = errors(e);
                 }
                 CURRENTOBSERVER = null;
@@ -686,7 +686,7 @@ const observer = (f,thisArg,...args) => {
         if (f.name) observer = AsyncFunction(`return async function ${f.name}(...args) { return (${observer}).call(this,...args) }`)();
     } else {
         observer = function (...args) {
-            if (CURRENTOBSERVER !== observer) {
+            if (CURRENTOBSERVER !== observer && !observer.stopped) {
                 let result;
                 CURRENTOBSERVER = observer;
                 try {
@@ -701,8 +701,8 @@ const observer = (f,thisArg,...args) => {
         if (f.name && f.name!=="anonymous") observer = Function(`return function ${f.name}(...args) { return (${observer}).call(this,...args) }`)();
     }
     if(thisArg!==undefined) observer = observer.bind(thisArg,...args);
-    Object.defineProperty(observer,"stop",{configurable:true,writable:true,value:()=>observer.stopped===true});
-    Object.defineProperty(observer,"start",{configurable:true,writable:true,value:()=>delete observer.stopped});
+    Object.defineProperty(observer,"stop",{configurable:true,writable:true,value:()=>observer.stopped = true});
+    Object.defineProperty(observer,"start",{configurable:true,writable:true,value:()=> delete observer.stopped});
     Object.defineProperty(observer,"withOptions",{configurable:true,writable:true,value:function({onerror}={}) { errors=onerror; return observer; }});
     observer();
     return observer;
