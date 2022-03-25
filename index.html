@@ -120,6 +120,7 @@
                 content.style.setProperty("max-width",`calc(100% - ${8+40}px)`);
             }
         }
+        content.style.setProperty("margin-left",toc.clientWidth+10);
         content.style.setProperty("max-width",`calc(100% - ${toc.clientWidth+40}px)`);
         toc.addEventListener('touchstart', event => {
             touchstartX = event.changedTouches[0].screenX
