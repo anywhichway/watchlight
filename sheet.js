@@ -1,4 +1,4 @@
-import {observer, reactive} from "./watchlight.js";
+import {observer, reactive, getFunctionBody} from "./watchlight.js";
 
 const hasKeys = (value) => {
     if(value && typeof(value)==="object") for(const key in value) return true
@@ -220,11 +220,7 @@ const FUNCTIONS = {
     }
 }
 
-const getFunctionBody = (f) => {
-    const string = f.toString();
-    if (string[string.length - 1] === "}") return string.substring(string.indexOf("{") + 1, string.length - 1);
-    return string.substring(string.indexOf(">") + 1);
-}
+
 
 const withFormat = function(format) {
     if(typeof(format)==="string") {

@@ -24,8 +24,8 @@ Combo = reactive(Combo);
 whilst(function pair({person1,person2}) {
     return person1.name!==person2.name &&
        not(Combo(person1,person2),([p1,p2],[existingp1,existingp2]) => p1===existingp1 || p1===existingp2 || p2==existingp1 || p2===existingp2)
-},({person1,person2}) => Combo(person1,person2), {person1:Person,person2:Person})
-    .then((combo) => console.log("A pair!",JSON.stringify(combo)))
+},({person1,person2}) => { return {combo:Combo(person1,person2)} }, {person1:Person,person2:Person})
+    .then(({combo}) => console.log("A pair!",JSON.stringify(combo)))
 
 
 for(let i=0;i<numberpeople;i++) {

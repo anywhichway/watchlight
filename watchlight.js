@@ -26,6 +26,12 @@ function* cartesian(head, ...tail) {
     for (let r of remainder) for (let h of head) yield [h, ...r];
 }
 
+const getFunctionBody = (f) => {
+    const string = f.toString();
+    if (string[string.length - 1] === "}") return string.substring(string.indexOf("{") + 1, string.length - 1);
+    return string.substring(string.indexOf(">") + 1);
+}
+
 function deepEqual(a,b,seen=new Set()) {
     if(a===b) return true;
     const type = typeof(a);
@@ -204,7 +210,7 @@ class ReactorEvent {
 
 const isReactor = (target) => target && typeof(target)==="object" && target["__reactiveuid__"];
 
-const Reactor = (target,domain={},{bind,parent,path=""}={}) => {
+const Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
     const type= typeof(target);
     if(!target || (type!=="object" && type!=="function")) return target;
     if(target.__reactiveuid__) return target;
@@ -222,6 +228,11 @@ const Reactor = (target,domain={},{bind,parent,path=""}={}) => {
             __reactiveuid__: uid(),
             valueOf() {
                 return target.valueOf()
+            },
+            toJSON() {
+                const json = target.toJSON ? target.toJSON() : target;
+                if(json && confidence!==undefined) json.confidence = confidence;
+                return json;
             },
             setValue(value) {
                 proxy[Symbol.for("primitive")]=value;
@@ -271,9 +282,9 @@ const Reactor = (target,domain={},{bind,parent,path=""}={}) => {
                     return proxy;
                 }
                 continues.add({
-                    f:function(arg,{error,conditions}) {
+                    f:function(arg,{error,conditions,confidence}) {
                         if(error && typeof(error)==="object" && error instanceof Error) { throw error; }
-                        return f.call(this,arg,{conditions})
+                        return f.call(this,arg,{conditions,confidence})
                     }
                     ,synchronous
                 });
@@ -294,8 +305,9 @@ const Reactor = (target,domain={},{bind,parent,path=""}={}) => {
                 }
                 condition[property] = value;
             },
-            withOptions({priority}) {
-                target.priority = priority;
+            withOptions(options) {
+                if(type==="function" && options.priority!==undefined) target.priority = options.priority;
+                if(options.confidence!==undefined) confidence = options.confidence;
                 return proxy;
             },
             withConditions(conditions) {
@@ -384,9 +396,8 @@ const Reactor = (target,domain={},{bind,parent,path=""}={}) => {
                 }
             }
         },
-        doThen = (result,binding) => {
+        doThen = (result,{binding,confidence,conditions}) => {
             let error;
-            const cndtns =  new Map(conditions);
             result = Array.from(continues).reduce(async (result,{f,synchronous}) => {
                 result = await result;
                 if (result) {
@@ -397,14 +408,14 @@ const Reactor = (target,domain={},{bind,parent,path=""}={}) => {
                     }
                     if (synchronous) {
                         try {
-                            result = f.call(proxy, result, {error,conditions:cndtns,justification:binding});
+                            result = f.call(proxy, result, {error,conditions,justification:binding,confidence});
                         } catch (e) {
                             error = e;
                         }
                     } else {
                         result = new Promise(async (resolve, reject) => {
                             try {
-                                const value = await f.call(proxy, result, {error,conditions:cndtns});
+                                const value = await f.call(proxy, result, {error,conditions,confidence});
                                 if(error && value===undefined) reject(error);
                                 error = null;
                                 resolve(value);
@@ -421,6 +432,7 @@ const Reactor = (target,domain={},{bind,parent,path=""}={}) => {
         };
         const proxy = new Proxy(target, {
             get(_,property) { // keeping target outside proxy for get/set allows us to update it for primitives
+                if(property==="confidence") return confidence;
                 if(property.toString()==="Symbol(Symbol.toPrimitive)") {
                     if(type==="object") {
                         property = "Symbol(primitive)";
@@ -453,6 +465,7 @@ const Reactor = (target,domain={},{bind,parent,path=""}={}) => {
                 return value;
             },
             set(_,property,value) {
+                if(property==="confidence") throw new TypeError(`confidence is a read-only reserved property of watchlight reactive data and rules`);
                 if(value===undefined) {
                     delete proxy[property];
                     return true;
@@ -522,7 +535,8 @@ const Reactor = (target,domain={},{bind,parent,path=""}={}) => {
                     const event = new ReactorEvent({type:"fire",target:proxy,thisArg,argumentList:[binding,...args]});
                     local.handleEvent(event);
                     if(!event.defaultPrevented) {
-                        result = doThen(result,binding);
+                        const cf = confidence>0 ? Object.values(binding).reduce((cf,value) => Math.min(cf,value.confidence===undefined ? 1 : value.confidence),1) * confidence : undefined;
+                        result = doThen(result,{binding,confidence:cf,conditions:new Map(conditions)});
                     }
                     //if(!bindings.some((b) => Object.entries(binding).every(([key,value]) => b[key]===value))) {
                      //   bindings[bindings.length] = binding; // slightly faster than push
@@ -596,16 +610,17 @@ const stop = () => {
     if(trace.run) console.log("run:stop", stats)
 };
 
-const reactive = (target) => {
+const reactive = (target,{confidence}={}) => {
     const type = typeof(target);
-    if(type==="function") return Reactor(target);
+    if(type==="function") return Reactor(target,{},{confidence});
     if(!target || type!=="object") throw new TypeError(`Can't create reactive object from ${typeof(target)} ${target}`);
     return Reactor(target);
 }
 
-const assert = (target,{source}={}) => {
+const assert = (target,{source,confidence}={}) => {
     const value = isReactor(target) ? target : reactive(target),
         ctor = Object.getPrototypeOf(target).constructor;
+    if(confidence) value.withOptions({confidence});
     let wm = workingMemory.get(ctor);
     if(!wm) {
         wm = new Set();
@@ -640,29 +655,39 @@ const exists = (object,test) => {
 
 const not = (object,test) => !exists(object,test);
 
-const when = (target,domain={},{bind}={}) => {
+const when = (condition,domain={},{bind,confidence}={}) => {
     const when = function(objects) {
-        const bool = target(objects),
+        const bool = condition(objects),
             type = typeof(bool);
-        if(type!=="boolean") throw new TypeError(`when function must return a boolean not ${type}: ${target}`);
+        if(type!=="boolean") throw new TypeError(`when function must return a boolean not ${type}: ${condition}`);
         if(bool) return objects;
     }
-    when.condition = target;
-    return Reactor(when,domain,{bind});
+    when.condition = condition;
+    return Reactor(when,domain,{bind,confidence});
 }
 
-const whilst = (target,result,domain={},{bind,onassert}={}) => {
-    const proxy = when(target,domain,{bind})
-        .then((objects,{conditions}={}) => {
-            let data = result(objects);
-            if(data && data.constructor===Array) { // do not use Array.isArray, they may be custom domain
-                data = data.map((data) => {
-                    return assert(data,{source:proxy}).withConditions(conditions);
-                })
-            } else if(data) {
-                data = assert(data,{source:proxy}).withConditions(conditions);
-            }
-            return data;
+const whilst = (condition,result,domain={},{bind,confidence,onassert}={}) => {
+    const proxy = when(condition,domain,{bind,confidence})
+        .then((objects,{conditions,confidence}={}) => {
+            const resultobjects = result.call(proxy,objects);
+            Object.entries(resultobjects).forEach(([key,data]) => {
+                if(!(key in objects)) {
+                    if(data && data.constructor===Array) { // do not use Array.isArray, there may be custom arrays in domain
+                        data = data.map((data) => { // confidence may have been set using withOptions, so use proxy.confidence
+                            if(onassert) {
+                                onassert(new ReactorEvent({type:"assert",source:proxy,target:data}))
+                            }
+                            return assert(data,{source:proxy}).withConditions(conditions).withOptions({confidence});
+                        })
+                    } else if(data) {
+                        if(onassert) {
+                            onassert(new ReactorEvent({type:"assert",source:proxy,target:data}))
+                        }
+                        data = assert(data,{source:proxy}).withConditions(conditions).withOptions({confidence});
+                    }
+                }
+            });
+            return resultobjects;
         });
     return proxy;
 }
@@ -737,4 +762,4 @@ const Partial = (constructor,data) => {
     return constructor.__reactiveuid__ ? Reactor(instance) : instance;
 }
 
-export {reactive,when,whilst,assert,exists,not,retract,observer,unobserve,run,stop,Partial,deepEqual}
+export {reactive,when,whilst,assert,exists,not,retract,observer,unobserve,run,stop,Partial,deepEqual,getFunctionBody}

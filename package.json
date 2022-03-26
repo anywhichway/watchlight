@@ -1,6 +1,6 @@
 {
   "name": "watchlight",
-  "version": "1.0.11b",
+  "version": "1.0.12b",
   "description": "A light weight, comprehensive, reactive framework for business logic.",
   "type": "module",
   "main": "watchlight.js",
@@ -17,6 +17,7 @@
     "addEventListener",
     "drools",
     "nools",
+    "rools",
     "clips",
     "ops5",
     "rules",

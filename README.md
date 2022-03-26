@@ -1,10 +1,10 @@
-<div id="TOC" style="position:fixed;max-height:95vh;opacity:1">
+<div id="TOC" style="position:fixed;max-height:98%;height:98%;opacity:1">
    <div id="header">
-      <div style="font-size:125%;font-weight:bold;"> <a href="https://watchlight.dev">watchlight.dev</a> v1.0.11 beta</div>
+      <div style="font-size:125%;font-weight:bold;"> <a href="https://watchlight.dev">watchlight.dev</a> v1.0.12 beta</div>
       <span id="toggle-button" style="display:none;float:right;font-weight:bold">&lt;&lt;</span>
       <i>For when things change.</i>
    </div>
-   <div class="toc" style="border:1px solid grey;margin-right:5px;border-radius:5px;max-height:95%;overflow-x:hidden;overflow-y:auto">
+   <div class="toc" style="border:1px solid grey;margin-right:5px;border-radius:5px;overflow-x:hidden;overflow-y:auto">
    </div>
 </div>
 <div id="content" style="float:right;padding-top:0px;max-height:100vh;overflow:auto;opacity:1">
@@ -14,7 +14,7 @@
 ## Introduction
 
 `Watchlight` provides a range of approaches to support reactive programming beyond the DOM and user interface with a 
-light-weight JavaScript module (13K minified, 4.5K gzipped).
+light-weight JavaScript module (14K minified, 4.6K gzipped).
 
 * <a href="#event-listeners">Event listeners</a> on any reactive object via `addEventListener`.
 * <a href="#observers">Observers</a> via functions wrapping reactive objects, e.g. `observer(() => console.log(myObject.name))` 
@@ -459,10 +459,12 @@ when(({person}) => person.age<21,{person:Person})
      // if a person's name changes or a person is removed
      // Combo has an equals methods on it so that it is reflexive
      return person1.name!==person2.name && not(Combo(person1,person2));
-    }, ({person1,person2}) => Combo(person1,person2), // create pair
-        {person1:Person,person2:Person})
-    .then((combo) => console.log("A pair:",combo)) 
+    }, // then, create pair
+    ({person1,person2}) => { return {combo:Combo(person1,person2)}}, 
+    {person1:Person,person2:Person})
+    .then(({combo}) => console.log("A pair:",combo)) 
     // NOTE: then gets the newly created Combo object as its argument
+    // The pair creation function coould also have returned the person objects
 ```
 
 ### Rules API
@@ -597,7 +599,8 @@ return an object or array of objects of any class. The array returned MUST be a 
 its property `constructor`===`Array`. This object or objects are made reactive and asserted to rule memory. They are 
 then used as the input argument to the first `action`, i.e. `then` statement.
 
-If you need to get hold of the reactive assertion(s), add a `onassert` to the rule `options`.
+If you need to get hold of the reactive assertion(s), add a `onassert` to the rule `options`. Note, `assert`
+events can't be cancelled.
 
 Returns: Reactive `Proxy` for `condition`.
 
@@ -606,10 +609,10 @@ whilst(
     function match({person1,person2}) {   // condition
         return person1.name!==person2.name && not(Combo(person1,person2));
     },
-    ({person1,person2}) => Combo(person1,person2), // conclusion
+    ({person1,person2}) => { return {combo:Combo(person1,person2)}}, // conclusion
     {person1:Person,person2:Person}, // domain
     {onassert:({event,proxy,target}) => console.log("asserted",proxy)})
-    .then((combo) => { // watch for retraction
+    .then(({combo}) => { // watch for retraction
         return combo.addEventListener("retract",() => {
             console.log("retracted",combo)
         })
@@ -628,7 +631,8 @@ The `retract` handler will fire if either person in the `Combo` is deleted or ha
 A `whilst` rule automatically manages logical dependency of data. However, there may be times when you want to
 manage the dependency directly. The `withConditions` function can support you in this.
 
-The `this` context of `then` is the data which causes a rule to fire. The match rule above could be written as:
+The `conditions` provided to `then` is the data which causes a rule to fire. The match rule above could be 
+written as:
 
 ```javascript
 whilst(
@@ -639,6 +643,7 @@ whilst(
     .then(function({person1,person2},{conditions}) {
         const combo = assert(Combo(person1,person2)).withConditions(conditions);
         console.log("asserted",combo);
+        return combo;
     })
     .then((combo) => { // watch for retraction
         return combo.addEventListener("retract",() => {
@@ -650,10 +655,15 @@ whilst(
 
 Returns: `reactiveObject`
 
-#### rule.withOptions({priority:number})
+#### rule.withOptions({priority:number,confidence:number})
 
-Sets a priority on a rule. If multiple rules are matched at the same time, the highest priority rules fire first. The
-actions of these rules may result in lower priority rules no longer firing.
+`priority` sets a priority on a rule. If multiple rules are matched at the same time, the highest priority rules 
+fire first. The actions of these rules may result in lower priority rules no longer firing.
+
+`confidence` sets a confidence on a rule or reactive data. If a `whilst` rule is created, then any assertions
+have a `confidence` = minimum confidence of data used to fire the rule * confidence of the rule. You can run the 
+example <a href="./examples/rules/diagnostic-confidence.html" target="_tab">diagnostic confidence</a> or view its
+<a href="./examples/rules/diagnostic-confidence.js" target="_tab">source</a>.
 
 Returns `rule`.
 
@@ -927,6 +937,9 @@ A custom commercial license. Contact syblackwell@anywhichway.com.
 
 ## Change History 
 Reverse Chronological Order
+
+2022-03-26 v1.0.12b More rule examples. Added foundation for confidence based, a.k.a. "fuzzy", reasoning. 
+Modified `result` portions of `whilst` for more flexible results return. Adjusted TOC layout and scrolling.
 
 2022-03-25 v1.0.11b Documentation content updates.
 

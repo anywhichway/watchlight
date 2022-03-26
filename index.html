@@ -99,18 +99,19 @@
             else if (right && touchendX > touchstartX && touchstartX<150) { right(); }
         }
         function handleTOC({open,close,toggle}) {
-            if(toc.style["max-width"]=="8px" && (open || toggle)) {
+            if(toc.style["max-width"]=="7px" && (open || toggle)) {
                 toc.style.setProperty("max-width","");
                 toc.style.setProperty("overflow-y","auto");
-                toc.style.setProperty("max-height","95%");
+                toc.style.setProperty("max-height","calc(100% - 3em)");
+                toc.style.setProperty("height","calc(100% - 3em)");
                 header.style.setProperty("display","initial");
                 content.style.setProperty("margin-left",toc.clientWidth+10);
                 content.style.setProperty("max-width",`calc(100% - ${toc.clientWidth+40}px)`);
-            } else if(toc.style["max-width"]!=="8px" && (close || toggle)) {
-                toc.style.setProperty("max-width","8px");
-                toc.style.setProperty("height","98vh");
+            } else if(toc.style["max-width"]!=="7px" && (close || toggle)) {
+                toc.style.setProperty("max-width","7px");
                 toc.style.setProperty("overflow-y","hidden");
-                toc.style.setProperty("max-height","100%");
+                toc.style.setProperty("max-height","98%");
+                toc.style.setProperty("height","98%");
                 header.style.display = "none";
                 content.style.setProperty("margin-left","");
                 content.style.setProperty("max-width",`calc(100% - ${8+40}px)`);
@@ -118,6 +119,10 @@
         }
         content.style.setProperty("margin-left",toc.clientWidth+10);
         content.style.setProperty("max-width",`calc(100% - ${toc.clientWidth+40}px)`);
+        header.style.setProperty("max-height","3em");
+        header.style.setProperty("height","3em");
+        toc.style.setProperty("max-width","7px");
+        handleTOC({open:true})
         toc.addEventListener('touchstart', event => {
             touchstartX = event.changedTouches[0].screenX
         })
