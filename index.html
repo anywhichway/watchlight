@@ -92,7 +92,6 @@
             y = 0;
         const toggle = document.getElementById("TOC"),
             header = document.getElementById("header"),
-            scroller = document.getElementsByClassName("toc")[0],
             content = document.getElementById("content");
         document.getElementById("toggle-button").style.setProperty("display","inline");
         function handleGesture({event,right,left}={}) {
@@ -102,19 +101,16 @@
         function handleTOC({open,close,toggle}) {
             if(toc.style["max-width"]=="8px" && (open || toggle)) {
                 toc.style.setProperty("max-width","");
-                toc.style.setProperty("max-height","95vh");
-                toc.style.setProperty("height","95vh");
-                scroller.style.setProperty("overflow-y","auto");
-                scroller.style.setProperty("max-height","95%");
+                toc.style.setProperty("overflow-y","auto");
+                toc.style.setProperty("max-height","95%");
                 header.style.setProperty("display","initial");
                 content.style.setProperty("margin-left",toc.clientWidth+10);
                 content.style.setProperty("max-width",`calc(100% - ${toc.clientWidth+40}px)`);
             } else if(toc.style["max-width"]!=="8px" && (close || toggle)) {
                 toc.style.setProperty("max-width","8px");
-                toc.style.setProperty("max-height","98vh");
                 toc.style.setProperty("height","98vh");
-                scroller.style.setProperty("overflow-y","hidden");
-                scroller.style.setProperty("max-height","100%");
+                toc.style.setProperty("overflow-y","hidden");
+                toc.style.setProperty("max-height","100%");
                 header.style.display = "none";
                 content.style.setProperty("margin-left","");
                 content.style.setProperty("max-width",`calc(100% - ${8+40}px)`);
