@@ -1,6 +1,6 @@
 <div id="TOC" style="position:fixed;max-height:98%;height:98%;opacity:1">
    <div id="header">
-      <div style="font-size:125%;font-weight:bold;"> <a href="https://watchlight.dev">watchlight.dev</a> v1.0.12 beta</div>
+      <div style="font-size:125%;font-weight:bold;"> <a href="https://watchlight.dev">watchlight.dev</a> v1.0.13 beta</div>
       <span id="toggle-button" style="display:none;float:right;font-weight:bold">&lt;&lt;</span>
       <i>For when things change.</i>
    </div>
@@ -88,6 +88,9 @@ different event handlers.
 The dispatch is done via `setTimeout` to avoid blocking on high volume changes. An optional configuration can be 
 provided to cause synchronous dispatch (see <a href="#event-listener-example">example</a> below).
 
+Events bubble up to their target's containing objects, e.g. an event modifying contact info in a child object
+of a user will bubble upto the user object.
+
 ### Event Listener API
 
 #### ReactorEvent(config:object)
@@ -101,7 +104,8 @@ based on event type and may include:
 * `value` - the current value of the `property`
 * `oldValue` - the previous value of the `property` before the event
 
-Typically, created automatically by `watchlight`, rather than by an application developer.
+Typically, created automatically by `watchlight`, rather than by an application developer. However, it is
+possible to add <a href="#custom-event-types">custom event types</a>.
 
 Events will bubble up an object to its containing objects. For the data below, event handlers registered on
 `object` will get events for changes to `aPerson`.
@@ -154,26 +158,34 @@ Removes a listener for `eventName` with the same name or that is the function on
 
 Returns: The `reactiveObject`.
 
-### Supported Event Names
+### Built-in Event Names
 
 Some of the events below are only supported by <a href="#inference-rules">Inference Rules</a>.
 
-#### fire
+Also see <a href="#custom-event-types">custom event types</a>.
 
-A special event supported by <a href="#inference-rules">Inference Rules</a> when their conditions are satisfied.
+#### assert
 
-#### defineProperty
-
-Listeners on the event name `defineProperty` are invoked whenever a new property is defined on an object. A new property 
-is assumed if the previous value of a property is `undefined`.
+A special event type that can be handled by calling `Reactor.addEventListener("assert", listener)`. The
+`listener` will get invoked whenever new data is inserted into rule accessible memory. See 
+<a href="#rule-processing">rule processing</a>.
 
 #### change
 
 Listeners on the event name `change` are invoked whenever a property value is changed on an object.
 
+#### defineProperty
+
+Listeners on the event name `defineProperty` are invoked whenever a new property is defined on an object. A new property
+is assumed if the previous value of a property is `undefined`.
+
 #### delete
 
 Listeners on the event name `delete` are invoked whenever a property is deleted from an object.
+
+#### fire
+
+A special event supported by <a href="#inference-rules">Inference Rules</a> when their conditions are satisfied.
 
 #### retract
 
@@ -206,6 +218,12 @@ aPerson.removeEventListener("change",({type,target,reactor,property,value,oldVal
 aPerson.removeEventListener("delete","myDelete"); // removes the delete event listener
 aPerson.removeEventListener("delete",function myDelete() {}); // also removes the delete event listener
 ```
+
+### Custom Event Types
+
+You can add custom event types by using `Reactor.registerEventType(eventName)`. You can then add
+and use event listeners that will automatically get invoked and support the standard API when events
+are posted using `reactiveObject.postMessage(eventName,options={})`.
 
 ## Observers
 
@@ -599,8 +617,10 @@ return an object or array of objects of any class. The array returned MUST be a 
 its property `constructor`===`Array`. This object or objects are made reactive and asserted to rule memory. They are 
 then used as the input argument to the first `action`, i.e. `then` statement.
 
-If you need to get hold of the reactive assertion(s), add a `onassert` to the rule `options`. Note, `assert`
-events can't be cancelled.
+If you need to get hold of the reactive assertion(s), add a `onassert` to the rule `options`. The function
+signature is the same as all event listeners. If the listener will be invoked asynchronously, so `preventDefault()`
+is unlikely to have an impact. Allowing synchronous calls and event cancellation in this situation can produce hard to debug
+code.
 
 Returns: Reactive `Proxy` for `condition`.
 
@@ -611,7 +631,7 @@ whilst(
     },
     ({person1,person2}) => { return {combo:Combo(person1,person2)}}, // conclusion
     {person1:Person,person2:Person}, // domain
-    {onassert:({event,proxy,target}) => console.log("asserted",proxy)})
+    {onassert:({event,source,target}) => console.log("asserted",source)})
     .then(({combo}) => { // watch for retraction
         return combo.addEventListener("retract",() => {
             console.log("retracted",combo)
@@ -620,9 +640,9 @@ whilst(
     .then((combo) => console.log("A pair!",combo))
 ```
 
-Note: In the `onassert` handler, if the object created in the `conclusion` is from a reactive constructor, both the 
-`proxy` and the `target` will be a `Proxy`. Otherwise, `target` will be a plain JavaScript instance that is the target 
-of the `proxy`.
+Note: In the `onassert` listener, if the object created in the `conclusion` is from a reactive constructor, both the 
+`source` (`Proxy` for the rule) and the `target` will be a reactive data `Proxy`. Otherwise, `target` will be a
+plain JavaScript instance prior to insertion into working memory.
 
 The `retract` handler will fire if either person in the `Combo` is deleted or has a name change.
 
@@ -937,6 +957,8 @@ A custom commercial license. Contact syblackwell@anywhichway.com.
 
 ## Change History 
 Reverse Chronological Order
+
+2022-03-26 v1.0.13b Support for custom event types added.
 
 2022-03-26 v1.0.12b More rule examples. Added foundation for confidence based, a.k.a. "fuzzy", reasoning. 
 Modified `result` portions of `whilst` for more flexible results return. Adjusted TOC layout and scrolling.

@@ -184,15 +184,15 @@ class ReactorEvent {
     constructor({type,...rest}) {
         Object.defineProperty(this,"type",{value:type});
         Object.defineProperty(this,"timestamp",{value:Date.now()});
-        Object.defineProperty(this,"bubbles",{value:true});
-        Object.defineProperty(this,"cancelable",{value:true});
+        Object.defineProperty(this,"bubbles",{value:typeof(rest.bubbles)==="boolean" ? rest.bubbles : true});
+        Object.defineProperty(this,"cancelable",{value:typeof(rest.cancelable)==="boolean" ? rest.cancelable : true});
         Object.defineProperty(this,"defaultPrevented",{configurable:true,value:false});
         Object.defineProperty(this,"stop",{configurable:true,value:false});
         Object.defineProperty(this,"stopImmediate",{configurable:true,value:false});
         Object.entries(rest).forEach(([key,value]) => {
             if(value!==undefined) Object.defineProperty(this,key,{value});
         })
-        Object.defineProperty(this,"currentTarget",{configurable:true,value:this.target});
+        if(this.target) Object.defineProperty(this,"currentTarget",{configurable:true,value:this.target});
     }
     preventDefault() {
         if(this.synchronous) throw new TypeError(`preventDefault can't be called on synchronous event handler ${this.synchronous}`)
@@ -210,7 +210,7 @@ class ReactorEvent {
 
 const isReactor = (target) => target && typeof(target)==="object" && target["__reactiveuid__"];
 
-const Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
+let Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
     const type= typeof(target);
     if(!target || (type!=="object" && type!=="function")) return target;
     if(target.__reactiveuid__) return target;
@@ -317,18 +317,21 @@ const Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
                 return proxy;
             },
             addEventListener(eventName,listener,{synchronous,once}={}) {
-                if(!["defineProperty","change","delete","fire","retract"].includes(eventName)) throw new TypeError(`Invalid event name: ${eventName}`);
+                if(!(eventName in eventTypes)) throw new TypeError(`Invalid event name: ${eventName}`);
                 (listeners[eventName] ||= new Map()).set(listener,{listener,options:{synchronous,once}});
                 return proxy;
             },
             hasEventListener(eventName,listener) {
-                if(!["defineProperty","change","delete","fire","retract"].includes(eventName)) throw new TypeError(`Invalid event name: ${eventName}`);
+                if(!(eventName in eventTypes)) throw new TypeError(`Invalid event name: ${eventName}`);
                 return [...(listeners[eventName] ||= new Map()).keys()].some((key) => {
                     return listener===key || listener.name===key.name || listener===key.name || listener+""===key+"";
                 })
             },
+            postMessage(eventName,options={}) {
+                local.handleEvent(new ReactorEvent({type:eventName,...options}));
+            },
             removeEventListener(eventName,listener) {
-                if(!["defineProperty","change","delete","fire","retract"].includes(eventName)) throw new TypeError(`Invalid event name: ${eventName}`);
+                if(!(eventName in eventTypes)) throw new TypeError(`Invalid event name: ${eventName}`);
                 [...(listeners[eventName] ||= new Map()).keys()].forEach((key) => {
                     if(listener===key || listener.name===key.name || listener===key.name  || listener+""===key+"") listeners[eventName].delete(key);
                 })
@@ -525,6 +528,7 @@ const Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
                 return true;
             },
             apply(target, thisArg, [binding,...args]) {
+                if(target===_Reactor) return target.call(thisArg,binding,...args);
                 if(ctors.length===0) return Reactor(new target(binding,...args));
                 stats.tested++;
                 CURRENTWHEN = proxy;
@@ -577,18 +581,21 @@ const Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
     }
     return proxy;
 }
-const listeners = {};
-Reactor.handleEvent = function(event) {
-    listeners[event.type]?.forEach(listener => setTimeout(()=> listener(event)))
+const _Reactor = Reactor;
+Reactor = Reactor(Reactor);
+const eventTypes = {
+    defineProperty: true,
+    change: true,
+    delete: true,
+    fire: true,
+    retract: true
 };
-Reactor.addEventListener = function(type,f) {
-    (listeners[type] ||= new Set()).add(f);
-    return Reactor;
-};
-Reactor.removeEventListener = function(type,f) {
-    (listeners[type] ||= new Set()).delete(f);
-    return Reactor;
-};
+Reactor.registerEventType = function(eventName) {
+    eventTypes[eventName] = true;
+}
+Reactor.unregisterEventType = function(eventName) {
+    delete eventTypes[eventName];
+}
 
 
 let stats = {tested:0,succeeded:0,startTime:Date.now()},
@@ -673,17 +680,21 @@ const whilst = (condition,result,domain={},{bind,confidence,onassert}={}) => {
             Object.entries(resultobjects).forEach(([key,data]) => {
                 if(!(key in objects)) {
                     if(data && data.constructor===Array) { // do not use Array.isArray, there may be custom arrays in domain
-                        data = data.map((data) => { // confidence may have been set using withOptions, so use proxy.confidence
+                        data.forEach((item,i) => { // confidence may have been set using withOptions, so use proxy.confidence
                             if(onassert) {
-                                onassert(new ReactorEvent({type:"assert",source:proxy,target:data}))
+                                const event = new ReactorEvent({type:"assert",source:proxy,target:item});
+                                onassert(event);
+                                if(event.defaultPrevented) return;
                             }
-                            return assert(data,{source:proxy}).withConditions(conditions).withOptions({confidence});
+                            return data[i] = assert(item,{source:proxy}).withConditions(conditions).withOptions({confidence});
                         })
                     } else if(data) {
                         if(onassert) {
-                            onassert(new ReactorEvent({type:"assert",source:proxy,target:data}))
+                            const event = new ReactorEvent({type:"assert",source:proxy,target:data});
+                            onassert(event);
+                            if(event.defaultPrevented) return;
                         }
-                        data = assert(data,{source:proxy}).withConditions(conditions).withOptions({confidence});
+                        resultobjects[key] = assert(data,{source:proxy}).withConditions(conditions).withOptions({confidence});
                     }
                 }
             });
