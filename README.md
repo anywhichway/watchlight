@@ -48,6 +48,23 @@ There are examples in the <a href="./examples" target="_tab">examples  directory
 can be run by both loading an HTML file and running the command `node examplefilename.js`. The HTML files just load the 
 same JavaScript files that are fed to NodeJS on the command line.
 
+## Psuedo Classes
+
+`Watchlight` makes extensive use of `Proxy` or other constructs around objects and functions you provide. These constructs
+supplement the behavior of your functions and classes, but `instanceof` will only be true for your original symbols. To
+attempt to make the documentation clear we use the concept of a psuedo-class. A psuedo-class is a capitalized
+entity for which you can't use `instanceof` to check if something is an instance of the capitalized entity.
+
+The psuedo-classes include:
+
+* ReactiveObject
+* Observer
+* Rule
+* Partial
+* Sheet
+* Dimension
+* Cell
+
 ## Reactive Objects and Constructors
 
 Reactive objects can have <a href="#event-listeners">event listeners</a> attached, be the subject of 
@@ -71,7 +88,7 @@ const joe = Person({name:"joe",age:27}); // joe is a reactive object
 
 ### Reactive Object API
 
-#### Proxy reactive(target:object|function)
+#### ReactiveObject reactive(target:object|function)
 
 Returns: A reactive proxy for the objector function.
 
@@ -267,9 +284,25 @@ logs
 {"name":"mary","contactInfo":{"phone":"999-999-9999"}}
 ```
 
+You can call an `Observer` directly with or wi:
+
+```javascript
+const user = reactive({name:"mary",contactInfo:{phone:"555-555-5555"}}),
+    logUser = observer(() => {
+        console.log(JSON.stringify(user)); // recursively accesses every property
+    })
+loguser();
+```
+
+logs
+
+```shell
+{"name":"mary","contactInfo":{"phone":"555-555-5555"}}
+```
+
 ### Observer API
 
-#### any observer(aFunction:function [,thisArg:object,...args:any])
+#### Observer observer(aFunction:function [,thisArg:object,...args:any])
 
 Creates an observer from `aFunction` you provide. The observer will be called any time the properties on the 
 objects it references change in value. You can also call the observer directly like it was the original function.
@@ -277,14 +310,12 @@ objects it references change in value. You can also call the observer directly l
 Observers are indexed internally by name. Creating an observer from a new function with the same name as a previous
 observer will overwrite the old observer. Anonymous functions are not.
 
-You can pass a default `thisArg` and `...args` when creating an observer.
+You can pass a default `thisArg` and `...args` when creating an `Observer`.
 
 Synchronously invoked sub-functions will cause reactive dependencies for the containing observer. Use `unobserve` to
 avoid dependencies.
 
 Asynchronously invoked sub-functions, e.g. those inside `setTimeout` or a `Promise` will not cause reactive dependencies.
-
-Returns: The value returned by the function you provide.
 
 ```javascript
 import {reactive,observer} from "../../watchlight.js";
@@ -320,12 +351,20 @@ Welcome to the world joe
 Hello joe
 ```
 
-#### observer.withOptions({onerror:function})
+#### void observer.stop()
 
-Observer error handling defaults to re-throwing errors thrown by wrapped functions. This can be changed to swallow the
+Stops `observer` from executing when the objects it references change.
+
+#### void observer.start()
+
+Restarts the `observer` so it will respond when the objects it references change.
+
+#### Observer observer.withOptions( {onerror:function} )
+
+`Observer` error handling defaults to re-throwing errors thrown by wrapped functions. This can be changed to swallow the
 error by passing `{onerror:()=>{}}` or use the error as the value by passing `{onerror:(e) => e}`.
 
-#### any unobserve(aFunction:function)
+#### any unobserve( aFunction:function )
 
 You can nest `unobserve` inside an observer if you do not want changes to a particular object or property to cause
 invocation of the observer.
@@ -487,7 +526,7 @@ when(({person}) => person.age<21,{person:Person})
 
 ### Rules API
 
-#### Object Partial(constructor:function,data:object)
+#### Object Partial( constructor:function, data:object )
 
 Sometimes it is useful to match a partial object against working memory. The class constructors you use
 may have required arguments that prevent this. `Partial` addresses this problem. If you pass the class or a
@@ -514,17 +553,16 @@ when(({person}) => {
         });
 ```
 
-#### Proxy assert(data:object)
+#### ReactiveObject assert( data:object|ReactiveObject )
 
 Adds data to the working memory used by rules. Automatically turns `object` into a reactive object, if it was not already.
 
-Returns: Reactive proxy for the object asserted.
 
 ```javascript
 const joe = assert(new Person({name:"joe",age:27}));
 ```
 
-#### any rule.catch(errorHandler:function)
+#### any rule.catch( errorHandler:function )
 
 `errorHandler` has the call signature `(error:Error)`.
 
@@ -534,9 +572,10 @@ If the `errorHandler` returns anything else, it will be used as the input argume
 
 If the `errorHandler` throws, the next `catch` statement will be sought.
 
-#### boolean exists(object:Object [,test:function])
+#### boolean exists( object:Object [,test:function] )
 
-Checks to see if an object or partial object exists. Typically, used as part of rule condition.
+Checks to see if an object or partial object exists. Typically, used as part of rule condition. It is frequently used
+in combination with `Partial`
 
 ```javascript
 let joe = reactive(new Person({name:"joe",age:20})),
@@ -545,11 +584,13 @@ let joe = reactive(new Person({name:"joe",age:20})),
 // true
 joeexists = exists(joe); 
 // true because of joe
-namedjoeexists = exists(new Person({name:"joe"}));
+namedjoeexists = exists(new Partial(Person,{name:"joe"}));
 // false because joe is 20 and mary is not asserted
-rightageexists = exists(new Person({age:21}));
+rightageexists = exists(new Partial(Person,{age:21}));
 // false, because mary was not asserted to rule memory
-namedmaryexists = exists(new Person({name:"mary"})); 
+namedmaryexists = exists(new Partial(Person,{name:"mary"}));
+// true, because a Person that has all the same properties and values, i.e. mary, exists
+deepequalexists = exists(new Person({name:"mary",age:27})); 
 ```
 
 #### any rule.then(action:function,{conditions})
@@ -572,17 +613,17 @@ If the `action` returns anything else, it will be used as the input argument to 
 `conditions` is a `Map` subclass with reactive objects accessed by the `rule` as keys and an object with properties and
 values at the time of `rule` firing as the entries. Currently, its sole use is for input to `reactiveObject.withConditions`.
 
-Returns: `any` implementation defined.
+Returns: the return value of `action`.
 
-#### boolean not(object:Object)
+#### boolean not( object:Object )
 
 A convenience, equivalent to `!exists(object)`.
 
-#### Proxy retract(object:Object)
+#### ReactiveObject retract( object:Object )
 
 Removes data from the working memory used by rules.
 
-Returns: Reactive `Proxy` for the data if it was in working memory, otherwise `undefined`.
+Returns: Reactive `ReactiveObject` proxy for the data if it was in working memory, otherwise `undefined`.
 
 ```javascript
 let joe = reactive(new Person({name:"joe",age:27})),
@@ -595,7 +636,7 @@ mary = retract(mary)
 ```
 
 <a id="when"></a>
-#### Proxy when(condition:function,domain:Object)
+#### Rule when(condition:function,domain:Object)
 
 The `condition` can be an anonymous or named function. The call signature of `condition` is `(object:Object)` where 
 `object` must be an Object with one or more properties. The `condition` MUST return `true` or `false` indicating if 
@@ -604,10 +645,10 @@ the members of the `object` satisfy the rule conditions.
 The `domain` MUST be an Object with the same properties as the `object` argument to `condition`. The values of
 the properties MUST be classes or constructors.
 
-Returns: Reactive `Proxy` for `condition`.
+Returns: Reactive `Proxy` for `condition`, i.e. a `Rule`.
 
 <a id="whilst"></a>
-#### Proxy whilst(condition:function, conclusion:function, domain:object, options:Object)
+#### Rule whilst( condition:function, conclusion:function, domain:object, options:Object )
 
 Rules created with `whilst` have a conclusion that is logically dependent on the continued truth of the `condition`.
 
@@ -618,11 +659,15 @@ its property `constructor`===`Array`. This object or objects are made reactive a
 then used as the input argument to the first `action`, i.e. `then` statement.
 
 If you need to get hold of the reactive assertion(s), add a `onassert` to the rule `options`. The function
-signature is the same as all event listeners. If the listener will be invoked asynchronously, so `preventDefault()`
-is unlikely to have an impact. Allowing synchronous calls and event cancellation in this situation can produce hard to debug
-code.
+signature with get a `RectorEvent` of the form `{ type:string, source:Rule, target:object|ReactiveObject }`.
 
-Returns: Reactive `Proxy` for `condition`.
+The `target` will be a reactive data `Proxy`, i.e. a `ReactiveObject`, if its constructor was made reactive. 
+Otherwise, `target` it will be a plain JavaScript instance prior to insertion into working memory.
+
+The listener will be invoked asynchronously, so `preventDefault()` is unlikely to have an impact. Allowing 
+synchronous calls and event cancellation in this situation can produce hard to debug code.
+
+Returns: Reactive `Proxy` for `condition`, i.e. a `Rule`.
 
 ```javascript
 whilst(
@@ -640,13 +685,9 @@ whilst(
     .then((combo) => console.log("A pair!",combo))
 ```
 
-Note: In the `onassert` listener, if the object created in the `conclusion` is from a reactive constructor, both the 
-`source` (`Proxy` for the rule) and the `target` will be a reactive data `Proxy`. Otherwise, `target` will be a
-plain JavaScript instance prior to insertion into working memory.
-
 The `retract` handler will fire if either person in the `Combo` is deleted or has a name change.
 
-#### reactiveObject.withConditions( conditions:Map)
+#### ReactiveObject reactiveObject.withConditions( conditions:Map )
 
 A `whilst` rule automatically manages logical dependency of data. However, there may be times when you want to
 manage the dependency directly. The `withConditions` function can support you in this.
@@ -673,9 +714,7 @@ whilst(
     .then((combo) => console.log("A pair!",combo))
 ```
 
-Returns: `reactiveObject`
-
-#### rule.withOptions({priority:number, confidence:number})
+#### Rule rule.withOptions( {priority:number, confidence:number} )
 
 `priority` sets a priority on a rule. If multiple rules are matched at the same time, the highest priority rules 
 fire first. The actions of these rules may result in lower priority rules no longer firing.
@@ -685,11 +724,9 @@ have a `confidence` = minimum confidence of data used to fire the rule * confide
 example <a href="./examples/rules/diagnostic-confidence.html" target="_tab">diagnostic confidence</a> or view its
 <a href="./examples/rules/diagnostic-confidence.js" target="_tab">source</a>.
 
-Returns `rule`.
-
 ### Instance Bound Rules
 
-Reactive objects can have instance bound rules associated with then in addition to <a href="#event-handlers">event handlers<a>
+Reactive objects can have instance bound rules associated with them in addition to <a href="#event-handlers">event handlers<a>
 and <a href="#observers">observers</a>. Unlike event handlers and observers, these rules get added to the rule processing agenda. 
 
 There are two options for binding. The first is to provide a rule that applies only to the object it is bound to:
@@ -803,9 +840,11 @@ const sheet = Sheet({
 })
 ```
 
-***Note***:  You can't add custom functions that are closures around variables that are out of scope to Sheet.
+***Note***:  You can't add custom functions that are closures around variables that are out of scope to a `Sheet`.
+Due to the asynchronous nature of internal `Sheet` processing and the use of `setTimeout`, using a function like this 
+will result in an error that may or may not be thrown in a manner you can catch it.
 
-Sheet functions behave like their similarly named counterparts in MS Excel and Google Sheet.
+`Sheet` functions behave like their similarly named counterparts in MS Excel and Google Sheet.
 
 Most functions will automatically convert cell references to iterables when necessary.
 
@@ -958,7 +997,7 @@ A custom commercial license. Contact syblackwell@anywhichway.com.
 ## Change History 
 Reverse Chronological Order
 
-2022-03-26 v1.0.13b Support for custom event types added.
+2022-03-27 v1.0.13b Support for custom event types added.
 
 2022-03-26 v1.0.12b More rule examples. Added foundation for confidence based, a.k.a. "fuzzy", reasoning. 
 Modified `result` portions of `whilst` for more flexible results return. Adjusted TOC layout and scrolling.
