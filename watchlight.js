@@ -182,17 +182,17 @@ const agenda = new Agenda();
 
 class ReactorEvent {
     constructor({type,...rest}) {
-        Object.defineProperty(this,"type",{value:type});
-        Object.defineProperty(this,"timestamp",{value:Date.now()});
-        Object.defineProperty(this,"bubbles",{value:typeof(rest.bubbles)==="boolean" ? rest.bubbles : true});
-        Object.defineProperty(this,"cancelable",{value:typeof(rest.cancelable)==="boolean" ? rest.cancelable : true});
-        Object.defineProperty(this,"defaultPrevented",{configurable:true,value:false});
-        Object.defineProperty(this,"stop",{configurable:true,value:false});
-        Object.defineProperty(this,"stopImmediate",{configurable:true,value:false});
+        Object.defineProperty(this,"type",{enumerable:true,value:type});
+        Object.defineProperty(this,"timestamp",{enumerable:true,value:Date.now()});
+        Object.defineProperty(this,"bubbles",{enumerable:true,value:typeof(rest.bubbles)==="boolean" ? rest.bubbles : true});
+        Object.defineProperty(this,"cancelable",{enumerable:true,value:typeof(rest.cancelable)==="boolean" ? rest.cancelable : true});
+        Object.defineProperty(this,"defaultPrevented",{enumerable:true,configurable:true,value:false});
+        Object.defineProperty(this,"stop",{enumerable:true,configurable:true,value:false});
+        Object.defineProperty(this,"stopImmediate",{enumerable:true,configurable:true,value:false});
         Object.entries(rest).forEach(([key,value]) => {
-            if(value!==undefined) Object.defineProperty(this,key,{value});
+            if(value!==undefined) Object.defineProperty(this,key,{enumerable:true,writable:true,configurable:true,value});
         })
-        if(this.target) Object.defineProperty(this,"currentTarget",{configurable:true,value:this.target});
+        if(this.target) Object.defineProperty(this,"currentTarget",{enumerable:true,configurable:true,value:this.target});
     }
     preventDefault() {
         if(this.synchronous) throw new TypeError(`preventDefault can't be called on synchronous event handler ${this.synchronous}`)
@@ -773,4 +773,4 @@ const Partial = (constructor,data) => {
     return constructor.__reactiveuid__ ? Reactor(instance) : instance;
 }
 
-export {reactive,when,whilst,assert,exists,not,retract,observer,unobserve,run,stop,Partial,deepEqual,getFunctionBody}
+export {reactive,when,whilst,assert,exists,not,retract,observer,unobserve,run,stop,Partial,deepEqual,getFunctionBody,Reactor}

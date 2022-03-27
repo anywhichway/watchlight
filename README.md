@@ -1,6 +1,6 @@
 <div id="TOC" style="position:fixed;max-height:98%;height:98%;opacity:1">
    <div id="header">
-      <div style="font-size:125%;font-weight:bold;"> <a href="https://watchlight.dev">watchlight.dev</a> v1.0.13 beta</div>
+      <div style="font-size:125%;font-weight:bold;"> <a href="https://watchlight.dev">watchlight.dev</a> v1.0.14 beta</div>
       <span id="toggle-button" style="display:none;float:right;font-weight:bold">&lt;&lt;</span>
       <i>For when things change.</i>
    </div>
@@ -153,7 +153,7 @@ Stops bubbling when call from a synchronous listener, but all listeners on the c
 
 Stops bubbling when called from a synchronous listeners, and all subsequent listeners will be blocked.
 
-#### Proxy reactiveObject.addEventListener( eventName:string, listener:function, options:Object)
+#### ReactiveObject reactiveObject.addEventListener( eventName:string, listener:function, options:Object)
 
 Adds a `function` as an event listener on the `eventName`. The listener will receive a `ReactorEvent` when the
 `eventName` occurs on the `reactiveObject`, i.e. the listener has the signature `({event,....rest})`.
@@ -169,7 +169,7 @@ listener for `eventName` on the `reactiveObject`.
 
 Returns: The `true` or `false`.
 
-#### Proxy reactiveObject.removeEventListener( eventName:string, listener:function|string)
+#### ReactiveObject reactiveObject.removeEventListener( eventName:string, listener:function|string)
 
 Removes a listener for `eventName` with the same name or that is the function on the `reactiveObject`.
 
@@ -996,6 +996,9 @@ A custom commercial license. Contact syblackwell@anywhichway.com.
 
 ## Change History 
 Reverse Chronological Order
+
+2022-03-27 v1.0.14b Fixed issue with `ReactorEvent` properties not being enumerable, which prevent spread
+and assign copying.
 
 2022-03-27 v1.0.13b Support for custom event types added.
 

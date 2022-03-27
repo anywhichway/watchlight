@@ -1,4 +1,4 @@
-import {reactive} from "../watchlight.js";
+import {reactive,Reactor} from "../watchlight.js";
 
 
 
@@ -128,4 +128,18 @@ test("hasEventListener and removeEventListener - function body",async () => {
         expect(oldValue).toBe(27);
         resolve();
     })).toBe(false);
+})
+
+test("custom event",async () => {
+    Reactor.registerEventType("message");
+    const channel = reactive({name:"channelone"}),
+        promise = new Promise((resolve) => {
+            channel.addEventListener("message",({type,...rest}) => {
+                expect(type).toBe("message");
+                expect(rest.content).toBe("Hello");
+                resolve();
+            })
+        });
+    channel.postMessage("message",{content:"Hello"});
+    return promise;
 })
