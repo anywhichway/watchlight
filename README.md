@@ -646,7 +646,7 @@ plain JavaScript instance prior to insertion into working memory.
 
 The `retract` handler will fire if either person in the `Combo` is deleted or has a name change.
 
-#### reactiveObject.withConditions(conditions:Map)
+#### reactiveObject.withConditions( conditions:Map)
 
 A `whilst` rule automatically manages logical dependency of data. However, there may be times when you want to
 manage the dependency directly. The `withConditions` function can support you in this.
@@ -675,7 +675,7 @@ whilst(
 
 Returns: `reactiveObject`
 
-#### rule.withOptions({priority:number,confidence:number})
+#### rule.withOptions({priority:number, confidence:number})
 
 `priority` sets a priority on a rule. If multiple rules are matched at the same time, the highest priority rules 
 fire first. The actions of these rules may result in lower priority rules no longer firing.
