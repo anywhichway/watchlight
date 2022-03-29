@@ -1,6 +1,6 @@
 <div id="TOC" style="position:fixed;max-height:98%;height:98%;opacity:1">
    <div id="header">
-      <div style="font-size:125%;font-weight:bold;"> <a href="https://watchlight.dev">watchlight.dev</a> v1.0.14 beta</div>
+      <div style="font-size:125%;font-weight:bold;"> <a href="https://watchlight.dev">watchlight.dev</a> v1.0.15 beta</div>
       <span id="toggle-button" style="display:none;float:right;font-weight:bold">&lt;&lt;</span>
       <i>For when things change.</i>
    </div>
@@ -140,14 +140,14 @@ All the bubble stopping methods below will throw an error if used on asynchronou
 #### void reactorEvent.preventDefault()
 
 Prevents the event type from occurring after the current handler. For example, if there is a `change` handler
-and it is the first handler and synchronous, calling `preventDefault` will stop the change from occurring and
-no more handlers will be called.
+and it is the first handler and synchronous, calling `preventDefault` will stop the change from occurring. The event
+will still bubble.
 
 For rules, this means the actions will not be executed.
 
 #### void reactorEvent.stopPropagation()
 
-Stops bubbling when call from a synchronous listener, but all listeners on the current object will continue to execute.
+Stops bubbling when called from a synchronous listener, but all listeners on the current object will continue to execute.
 
 #### void reactorEvent.stopImmediatePropagation()
 
@@ -996,6 +996,9 @@ A custom commercial license. Contact syblackwell@anywhichway.com.
 
 ## Change History 
 Reverse Chronological Order
+
+2022-03-27 v1.0.15b Modified event bubbling to be consistent with browser approach. `preventDefault()` will no
+longer stop bubbling. Use `stopPropagation()` or `stopImmediatePropagation()` to stop bubbling.
 
 2022-03-27 v1.0.14b Fixed issue with `ReactorEvent` properties not being enumerable, which prevent spread
 and assign copying.

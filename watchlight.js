@@ -345,9 +345,9 @@ let Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
                     }
                     options.synchronous ? listener(event) : setTimeout(()=> listener(event));
                     if(options.once) local.removeEventListener(listener)
-                    return !event.stopImmediate && !event.defaultPrevented;
+                    return !event.stopImmediate;
                 }))) {
-                    if(parent && !event.stop && !event.stopImmediate && !event.defaultPrevented) parent.handleEvent(event);
+                    if(parent && !event.stop && !event.stopImmediate) parent.handleEvent(event);
                 }
             },
             addDependency({target,property}) {
@@ -767,7 +767,7 @@ const unobserve = (f) => {
 
 const Partial = (constructor,data) => {
     const instance = Object.create(constructor.prototype);
-    if(Array.isArray(data)) data.forEach((item) => instance.push(item))
+    if(Array.isArray(data)) data.forEach((item) => instance.push(item)) // should this be isArray(instance)
     else Object.assign(instance,data);
     Object.defineProperty(instance,"constructor",{configurable:true,writable:true,value:constructor.prototype.constructor||constructor});
     return constructor.__reactiveuid__ ? Reactor(instance) : instance;
