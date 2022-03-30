@@ -21,7 +21,7 @@ light-weight JavaScript module (14K minified, 4.6K gzipped).
 will log the `name` every time it changes.
 * <a href="#inference-rules">Inference rules</a> similar to  <a href="https://www.drools.org/">Drools</a> or 
 <a href="https://www.npmjs.com/package/rools">Rools</a> and modeled after the `Promise` paradigm.
-* <a href="#sheet">Spreadsheets</a> ... no reactive library would be complete without them.
+* <a href="#spreadsheet">Spreadsheets</a> ... no reactive library would be complete without them.
 
 The spreadsheet is provided as a separate file, `./sheet.js` and is not included in the 4.5K size stated above. Sheet
 is currently 5.5K minified and 2K gzipped.
@@ -90,7 +90,7 @@ const joe = Person({name:"joe",age:27}); // joe is a reactive object
 
 #### ReactiveObject reactive(target:object|function)
 
-Returns: A reactive proxy for the objector function.
+Returns: A reactive proxy for the object or function.
 
 ## Event Listeners
 
@@ -112,7 +112,7 @@ of a user will bubble upto the user object.
 
 #### ReactorEvent(config:object)
 
-An object with the string property `event` containing an event name, e.g. `{event:"change"}`. Other properties vary 
+An object with the string property `type` containing an event name, e.g. `{type:"change"}`. Other properties vary 
 based on event type and may include:
 
 * `target` - the reactive proxy generating the event
