@@ -1,6 +1,6 @@
 {
   "name": "watchlight",
-  "version": "1.0.16b",
+  "version": "1.0.17b",
   "description": "A light weight, comprehensive, reactive framework for business logic.",
   "type": "module",
   "main": "watchlight.js",
@@ -29,7 +29,7 @@
     "brml"
   ],
   "author": "Simon Y. Blackwell",
-  "license": "AGPL-3.0-or-later",
+  "license": "AGPLv3",
   "bugs": {
     "url": "https://github.com/anywhichway/watchlight/issues"
   },
