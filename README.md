@@ -1,6 +1,6 @@
 <div id="TOC" style="position:fixed;max-height:98%;height:98%;opacity:1">
    <div id="header">
-      <div style="font-size:125%;font-weight:bold;"> <a href="https://watchlight.dev">watchlight.dev</a> v1.0.15 beta</div>
+      <div style="font-size:125%;font-weight:bold;"> <a href="https://watchlight.dev">watchlight.dev</a> v1.0.16 beta</div>
       <span id="toggle-button" style="display:none;float:right;font-weight:bold">&lt;&lt;</span>
       <i>For when things change.</i>
    </div>
@@ -996,6 +996,8 @@ A custom commercial license. Contact syblackwell@anywhichway.com.
 
 ## Change History 
 Reverse Chronological Order
+
+2022-04-03 v1.0.16b Added automation of existing tests to package.json.
 
 2022-03-27 v1.0.15b Modified event bubbling to be consistent with browser approach. `preventDefault()` will no
 longer stop bubbling. Use `stopPropagation()` or `stopImmediatePropagation()` to stop bubbling.
