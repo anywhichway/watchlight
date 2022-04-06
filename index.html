@@ -29,25 +29,6 @@
                     id: heading.getAttribute('id')
                 }
             });
-            const generate = (headings,i=0,html) => {
-                return headings.reduce((html, heading, index, array) => {
-                    const depth = heading.depth;
-                    if (index > 0) {
-                        if(depth > array[index - 1].depth) html += `<ul>${generate(array.slice(index))}</ul>`
-                        else if(depth < array[index - 1].depth) {
-                            array.splice(0,array.length);
-                            return html;
-                        } else {
-                            html += `<li><a href="#${heading.id}">${heading.title}</a></li>`;
-                            array.shift();
-                        }
-                    } else {
-                        html += `<li><a href="#${heading.id}">${heading.title}</a></li>`;
-                        array.shift();
-                    }
-                    return html;
-                }, "")
-            }
             let html = "";
             for(let i=0;i<parsedHeadings.length;i++) {
                 const heading = parsedHeadings[i];
@@ -81,7 +62,7 @@
             hljs.highlightElement(el);
             el.style.setProperty("margin-right","10px");
         });
-        dom.body.style = "overflow:hidden;height:100%;max-height:100%;"
+        dom.body.style = "overflow:hidden;height:100%;max-height:100%;margin-top:0px"
         document.body.replaceWith(dom.body);
 
         let touchstartX = 0,
@@ -110,8 +91,8 @@
             } else if(toc.style["max-width"]!=="7px" && (close || toggle)) {
                 toc.style.setProperty("max-width","7px");
                 toc.style.setProperty("overflow-y","hidden");
-                toc.style.setProperty("max-height","98%");
-                toc.style.setProperty("height","98%");
+                toc.style.setProperty("max-height","97%");
+                toc.style.setProperty("height","97%");
                 header.style.display = "none";
                 content.style.setProperty("margin-left","");
                 content.style.setProperty("max-width",`calc(100% - ${8+40}px)`);
@@ -148,7 +129,8 @@
             handleTOC({toggle:true});
             setTimeout(() => {
                 if(hash===window.location.hash && y!==el.offsetTop) {
-                    content.scrollTo({left:0,top:el.offsetTop-10,behavior:"instant"})
+                    content.scrollTo({left:0,top:el.offsetTop-10,behavior:"instant"});
+                    setTimeout(()=>content.scrollBy(0,-25));
                 }
             })
         });
