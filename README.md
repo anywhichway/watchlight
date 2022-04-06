@@ -1,7 +1,7 @@
-<div style="position:fixed;min-width:100%;opacity:1;background:white;"><a href="https://watchlight.dev">watchlight.dev</a> v1.0.17 beta</div>
+<div style="position:fixed;min-width:100%;opacity:1;background:white;margin-bottom:0px;height:1.5em"><a href="https://watchlight.dev">watchlight.dev</a> v1.0.17 beta</div>
 <div id="TOC" style="position:fixed;top:2em;max-height:97%;height:97%;opacity:1;">
-   <div id="header" style="font-size:125%;font-weight:bold;">
-     &nbsp;<span id="toggle-button" style="display:none;float:right;font-weight:bold">&lt;&lt;</span>
+   <div id="header" style="font-weight:bold;margin-top:0px">
+     &nbsp;<span id="toggle-button" style="display:none;float:right;font-weight:bold;margin-top:0px">&lt;&lt;</span>
    </div>
    <div class="toc" style="border:1px solid grey;margin-right:5px;border-radius:5px;overflow-x:hidden;overflow-y:auto">
    </div>
@@ -289,14 +289,14 @@ logs
 {"name":"mary","contactInfo":{"phone":"999-999-9999"}}
 ```
 
-You can call an `Observer` directly with or wi:
+You can call an `Observer` directly:
 
 ```javascript
 const user = reactive({name: "mary", contactInfo: {phone: "555-555-5555"}}),
     logUser = observer(() => {
         console.log(JSON.stringify(user)); // recursively accesses every property
     })
-loguser();
+logUser();
 ```
 
 logs

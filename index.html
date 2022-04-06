@@ -97,11 +97,16 @@
                 content.style.setProperty("margin-left","");
                 content.style.setProperty("max-width",`calc(100% - ${8+40}px)`);
             }
+            if(close||toggle) {
+                setTimeout(()=> {
+                    content.scrollBy(0,-40);
+                });
+            }
         }
         content.style.setProperty("margin-left",toc.clientWidth+10);
         content.style.setProperty("max-width",`calc(100% - ${toc.clientWidth+40}px)`);
-        header.style.setProperty("max-height","3em");
-        header.style.setProperty("height","3em");
+       // header.style.setProperty("max-height","3em");
+        //header.style.setProperty("height","3em");
         toc.style.setProperty("max-width","7px");
         handleTOC({open:true})
         toc.addEventListener('touchstart', event => {
@@ -130,7 +135,9 @@
             setTimeout(() => {
                 if(hash===window.location.hash && y!==el.offsetTop) {
                     content.scrollTo({left:0,top:el.offsetTop-10,behavior:"instant"});
-                    setTimeout(()=>content.scrollBy(0,-25));
+                    setTimeout(()=> {
+                        content.scrollBy(0,-23);
+                    });
                 }
             })
         });
