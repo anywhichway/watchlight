@@ -1,9 +1,9 @@
 <div style="position:fixed;min-width:100%;opacity:1;background:white;margin-bottom:0px;height:1.5em"><a href="https://watchlight.dev">watchlight.dev</a> v1.0.17 beta</div>
-<div id="TOC" style="position:fixed;top:2em;max-height:97%;height:97%;opacity:1;">
+<div id="TOC" style="position:fixed;top:2em;max-height:97%;height:97%;opacity:1;background:white">
    <div id="header" style="font-weight:bold;margin-top:0px">
      &nbsp;<span id="toggle-button" style="display:none;float:right;font-weight:bold;margin-top:0px">&lt;&lt;</span>
    </div>
-   <div class="toc" style="border:1px solid grey;margin-right:5px;border-radius:5px;overflow-x:hidden;overflow-y:auto">
+   <div class="toc" style="border:1px solid grey;margin-right:5px;border-radius:5px;overflow-x:hidden;overflow-y:auto;background:whitesmoke">
    </div>
 </div>
 <div id="content" style="float:right;padding-top:0px;max-height:100vh;overflow:auto;opacity:1">
