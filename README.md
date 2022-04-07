@@ -8,7 +8,7 @@
 </div>
 <div id="content" style="float:right;padding-top:0px;max-height:100vh;overflow:auto;opacity:1">
 
-## Introduction
+## Introduction to Watchlight
 
 A light-weight, comprehensive, reactive framework for business logic and when things change.
 
@@ -614,10 +614,8 @@ deepequalexists = exists(new Person({name: "mary", age: 27}));
 
 ```javascript
 {
-    person:Person({name: "joe", age: 27}),
-        table
-:
-    Table({number: 12, capacity: 10})
+    person:Person({name: "joe", age: 27}), 
+    table: Table({number: 12, capacity: 10})
 }
 ```
 
@@ -677,7 +675,7 @@ property `constructor`===`Array`. This object or objects are made reactive and a
 used as the input argument to the first `action`, i.e. `then` statement.
 
 If you need to get hold of the reactive assertion(s), add a `onassert` to the rule `options`. The function signature
-with get a `RectorEvent` of the form `{ type:string, source:Rule, target:object|ReactiveObject }`.
+with get a `ReactorEvent` of the form `{ type:string, source:Rule, target:object|ReactiveObject }`.
 
 The `target` will be a reactive data `Proxy`, i.e. a `ReactiveObject`, if its constructor was made reactive.
 Otherwise, `target` it will be a plain JavaScript instance prior to insertion into working memory.
@@ -782,11 +780,9 @@ The property `bound` MUST be present in the condition argument. And, MUST NOT be
 
 ### Rule Example Files
 
-<a href="./examples/rules/fibonacci.html" target=_tab>Fibonacci sequence generation</a>:  
-<a href="./examples/rules/fibonacci.js" target=_tab>source</a>.
+<a href="./examples/rules/fibonacci.html" target=_tab>Fibonacci sequence generation</a>: <a href="./examples/rules/fibonacci.js" target=_tab>source</a>.
 
-<a href="./examples/rules/pairs.html" target=_tab>Pair matching beyond the examples in this document.</a>:
-<a href="./examples/rules/pairs.js" target=_tab>source</a>.
+<a href="./examples/rules/pairs.html" target=_tab>Pair matching beyond the examples in this document.</a>: <a href="./examples/rules/pairs.js" target=_tab>source</a>.
 
 ## Spreadsheet
 
@@ -883,7 +879,7 @@ Directly circular formulas are automatically avoided by excluding the cell in wh
 range it may reference, e.g.
 
 ```javascript
- const sheet = Sheet();
+const sheet = Sheet();
 sheet.tab1.A[1] = 1;
 sheet.tab1.A[2] = 2;
 sheet.tab1.A[3] = 3;
