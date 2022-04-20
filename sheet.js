@@ -1,4 +1,11 @@
-import {observer, reactive, getFunctionBody} from "./watchlight.js";
+import {observer, Observable} from "./observable.js";
+
+
+const getFunctionBody = (f) => {
+    const string = f.toString();
+    if (string[string.length - 1] === "}") return string.substring(string.indexOf("{") + 1, string.length - 1);
+    return string.substring(string.indexOf(">") + 1);
+}
 
 const hasKeys = (value) => {
     if(value && typeof(value)==="object") for(const key in value) return true
@@ -273,7 +280,7 @@ Object.entries(FUNCTIONS).forEach(([key,f]) => {
 
 const Sheet = (functions = {}, {root,path=""}={}) => {
     if (functions) Object.assign(FUNCTIONS, functions);
-    const proxy = new Proxy(reactive({}), {
+    const proxy = new Proxy(Observable({}), {
         get(target, property) {
             if(property==="isDimension") return ()=> true;
             if(property==="path") return path;
@@ -288,7 +295,8 @@ const Sheet = (functions = {}, {root,path=""}={}) => {
                     o = target[property] = observer(f, root || target),
                     valueOf = () => {
                         if(data.value!==valueOf.oldValue) {
-                            setTimeout(() => target[property] = o); // force dependency recalc
+                            //setTimeout(() => target[property] = o); // force dependency recalc
+                            (async () => target[property] = o)(); // more performant that setTimeout and less likely to leave open handles
                         }
                         return valueOf.oldValue = data.value;
                     };

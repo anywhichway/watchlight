@@ -1,4 +1,4 @@
-import {assert, reactive, run, whilst} from "../../watchlight.js"
+import {Observable, when, run} from "../../rule.js"
 
 class Diagnosis {
     constructor({name,rule}) {
@@ -6,7 +6,7 @@ class Diagnosis {
         this.rule = rule;
     }
 }
-Diagnosis = reactive(Diagnosis);
+Diagnosis = Observable(Diagnosis);
 
 class TestResult {
     constructor({name,value}) {
@@ -14,39 +14,39 @@ class TestResult {
         this.value = value;
     }
 }
-TestResult = reactive(TestResult);
+TestResult = Observable(TestResult);
 
-const functionToString = (f) => {
-    return (f+"").replaceAll(/\\r\\n/,"")
-}
-
-const commonCold = ({testResult})=>testResult.name==="temperature" && testResult.value > 99 && testResult.value < 101;
-whilst(commonCold,
-    ({testResult}) => { return {testResult,diagnosis:Diagnosis({name:"Common Cold",rule:commonCold+""})}},
-    {testResult:TestResult})
-    .withOptions({confidence:.8})
-    .then(({testResult,diagnosis}) => {
-        console.log(`${JSON.stringify(diagnosis)} based on ${JSON.stringify(testResult)}`)
-    });
-const flu = ({testResult}) => testResult.name==="temperature" && testResult.value > 99;
-whilst(flu,
-    ({testResult}) => { return {testResult,diagnosis:Diagnosis({name:"Flu"})}},
-    {testResult:TestResult})
-    .withOptions({confidence:.6})
-    .then(({testResult,diagnosis}) => {
-        console.log(`${JSON.stringify(diagnosis)} based on ${JSON.stringify(testResult)}`)
-    });
-
-whilst(({testResult}) => {
-        return testResult.name==="temperature" && testResult.value < 96 && testResult.value > 85
+when( function commonCold({testResult}) {
+        return testResult.name==="temperature" && testResult.value > 99 && testResult.value < 101
     },
-    ({testResult}) => { return {testResult,diagnosis:Diagnosis({name:"Hypothermia"})}},
     {testResult:TestResult})
-    .withOptions({confidence:.9})
-    .then(({testResult,diagnosis}) => {
+    .then(function({testResult}) {
+        return {testResult,diagnosis:new Diagnosis({name:"Common Cold"})
+        }})
+    .then(function({testResult,diagnosis}) {
+       this.justifies({testResult},diagnosis).withConfidence(.8)[0];
+        console.log(`${JSON.stringify(diagnosis)} based on ${JSON.stringify(testResult)}`)
+    });
+when(function flu({testResult}) {
+        return testResult.name==="temperature" && testResult.value > 99
+    },
+    {testResult:TestResult})
+    .then(function({testResult}) { return {testResult,diagnosis:new Diagnosis({name:"Flu"}) }})
+    .then(function({testResult,diagnosis})  {
+        this.justifies({testResult},diagnosis).withConfidence(.6);
         console.log(`${JSON.stringify(diagnosis)} based on ${JSON.stringify(testResult)}`)
     });
 
-assert(TestResult({name:"temperature",value:100}),{confidence:.9});
+when(function hypothermia({testResult}) {
+    return testResult.name==="temperature" && testResult.value < 96 && testResult.value > 85
+    },
+    {testResult:TestResult})
+    .then(function({testResult}) { return {testResult,diagnosis:new Diagnosis({name:"Hypothermia"}) }})
+    .then(function({testResult,diagnosis}) {
+        this.justifies({testResult},diagnosis).withConfidence(.6);
+        console.log(`${JSON.stringify(diagnosis)} based on ${JSON.stringify(testResult)}`)
+    });
 
-run({trace:{run:true}});
+new TestResult({name:"temperature",value:100}).withOptions({confidence:.9});
+
+run();

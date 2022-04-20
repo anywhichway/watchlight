@@ -62,7 +62,7 @@
                     .replace(/(?<=\${.*)(&lt;)(.*})/g, "<$2")
                     .replace(/(?<=\${.*)(&gt;)(.*})/g, ">$2")
             },
-            readme = await fetch("./README.md").then((result) => result.text());
+            readme = await fetch("./operators.md").then((result) => result.text());
         const dom =  parser.parseFromString(decode(marked.parse(readme,{})),"text/html"),
             toc = dom.querySelector(".toc");
         if(toc) {

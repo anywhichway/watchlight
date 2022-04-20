@@ -1,6 +1,6 @@
-import {reactive,observer,unobserve} from "../../watchlight.js";
+import {observable,observer,unobserve} from "../../watchlight.js";
 
-const tasks = reactive([{name:"task1",duration:2000},{name:"task2",duration:3000},{name:"task3",duration:1000}, {name:"task4",duration:2000}]);
+const tasks = observable([{name:"task1",duration:2000},{name:"task2",duration:3000},{name:"task3",duration:1000}, {name:"task4",duration:2000}]);
 
 const doTasks = observer(() => {
     const task = tasks.currentTask = unobserve(() => tasks.shift());
@@ -25,4 +25,4 @@ const doTasks = observer(() => {
         })
     }
 })
-setTimeout(() => tasks.push(reactive({name:"task5",duration:2000})),10000);
+setTimeout(() => tasks.push(observable({name:"task5",duration:2000})),10000);

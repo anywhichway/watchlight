@@ -1,7 +1,7 @@
-import {reactive,observer,unobserve} from "../watchlight.js";
+import {Observable,observer,unobserve} from "../observable.js";
 
 test("change",() => {
-    const person = reactive({name:"joe"}),
+    const person = Observable({name:"joe"}),
         result = {},
         o = observer(() => {
             const name = person.name;
@@ -14,7 +14,7 @@ test("change",() => {
 })
 
 test("unobserve",() => {
-    const person = reactive({name:"joe"}),
+    const person = Observable({name:"joe"}),
         result = {},
         o = observer(() => {
             const name = unobserve(() => person.name);
@@ -27,8 +27,8 @@ test("unobserve",() => {
 });
 
 test("chain",() => {
-    const person = reactive({name:"joe"}),
-        next = reactive({}),
+    const person = Observable({name:"joe"}),
+        next = Observable({}),
         result = {},
         o1 = observer(() => {
             const name = person.name;
@@ -48,8 +48,8 @@ test("chain",() => {
 })
 
 test("stop",() => {
-    const person = reactive({name:"joe"}),
-        next = reactive({}),
+    const person = Observable({name:"joe"}),
+        next = Observable({}),
         result = {},
         o1 = observer(() => {
             const name = person.name;
@@ -71,8 +71,8 @@ test("stop",() => {
 
 
 test("stop - start",() => {
-    const person = reactive({name:"joe"}),
-        next = reactive({}),
+    const person = Observable({name:"joe"}),
+        next = Observable({}),
         result = {},
         o1 = observer(() => {
             const name = person.name;

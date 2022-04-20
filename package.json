@@ -1,17 +1,18 @@
 {
   "name": "watchlight",
-  "version": "1.0.17b",
+  "version": "1.1.1b",
   "description": "A light weight, comprehensive, reactive framework for business logic.",
   "type": "module",
   "main": "watchlight.js",
   "scripts": {
-    "test": "set NODE_OPTIONS=--experimental-vm-modules && jest ./test"
+    "test": "set NODE_OPTIONS=--experimental-vm-modules && jest ./test --detectOpenHandles"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/anywhichway/watchlight.git"
   },
   "keywords": [
+    "rxjs",
     "reactive",
     "observer",
     "addEventListener",
@@ -36,5 +37,8 @@
   "homepage": "https://watchlight.dev",
   "devDependencies": {
     "jest": "^27.5.1"
+  },
+  "dependencies": {
+    "nanoid": "^3.3.2"
   }
 }

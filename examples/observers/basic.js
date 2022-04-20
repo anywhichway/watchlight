@@ -1,11 +1,11 @@
-import {reactive,observer} from "../../watchlight.js";
+import {observable,observer} from "../../watchlight.js";
 
-const user = reactive({name:"mary",contactInfo:{phone:"555-555-5555"}});
+const user = observable({name:"mary",contactInfo:{phone:"555-555-5555"}});
 const hello = observer(() => {
     console.log("Hello",user.name);
 })
 
-const world = reactive({});
+const world = observable({});
 observer(function(message) {
     this.user = user.name
     console.log(message,user.name);

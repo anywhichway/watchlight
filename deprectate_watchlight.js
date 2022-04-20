@@ -1,5 +1,5 @@
 /*
-    Watchlight - A light weight, comprehensive, reactive framework for business logic.
+    Watchlight - A light weight, comprehensive, observable framework for business logic.
     Copyright (C) 2022  Simon Y. Blackwell
 
     This program is free software: you can redistribute it and/or modify
@@ -32,40 +32,11 @@ const getFunctionBody = (f) => {
     return string.substring(string.indexOf(">") + 1);
 }
 
-function deepEqual(a,b,seen=new Set()) {
-    if(a===b) return true;
-    const type = typeof(a);
-    if(type==="function" || type!==typeof(b) || (a && !b) || (b && !a)) return false;
-    if(type==="number" && isNaN(a) && isNaN(b)) return true;
-    if(a && type==="object") {
-        if(seen.has(a)) return true;
-        seen.add(a);
-        if(a.constructor!==b.constructor || a.length!==b.length || a.size!==b.size) return false;
-        if(a instanceof Date) a.getTime() === b.getTime();
-        if(a instanceof RegExp) return a.toString() === b.toString();
-        if(a instanceof Set) {
-            for(const avalue of [...a]) {
-                if(![...b].some((bvalue) => deepEqual(avalue,bvalue,seen))) return false;
-            }
-            return true;
-        }
-        if(a instanceof Map) {
-            for(const [key,value] of [...a]) {
-                if(!deepEqual(b.get(key),value,seen)) return false;
-            }
-            return true;
-        }
-        for(const key in a) {
-            if(!deepEqual(a[key],b[key],seen)) return false;
-        }
-        return true;
-    }
-    return false;
-}
+
 
 let CURRENTWHEN,CURRENTOBSERVER;
 
-class WorkingMemory extends Map { // all reactive objects groups by constructor
+/* class WorkingMemory extends Map { // all observable objects groups by constructor
     constructor(...args) {
         super(...args);
     }
@@ -81,10 +52,10 @@ class WorkingMemory extends Map { // all reactive objects groups by constructor
         items.has = items.includes;
         return items;
     }
-}
-const workingMemory = new WorkingMemory();
+} */
+//const workingMemory = new WorkingMemory();
 
-class FunctionsByClass extends Map { // all functions associated with a given class based on being used in arguments
+/* class FunctionsByClass extends Map { // all functions associated with a given class based on being used in arguments
     constructor(...args) {
         super(...args);
     }
@@ -101,15 +72,19 @@ class FunctionsByClass extends Map { // all functions associated with a given cl
         items.has = items.includes;
         return items;
     }
-}
-const functionsByClass = new FunctionsByClass();
+} */
+//const functionsByClass = new FunctionsByClass();
 
 const Binding = (object) => {
-    Object.defineProperty(object,"__reactiveuid__",{enumerable:false,value:Object.values(object).reduce((uid,value) => uid ? uid+"."+value.__reactiveuid__ : + value.__reactiveuid__,null)});
+    Object.defineProperty(object,"__observableuid__",{enumerable:false,value:Object.values(object).reduce((uid,value) => uid ? uid+"."+value.__observableuid__ : + value.__observableuid__,null)});
     return object;
 }
 
 class Agenda extends Map {
+    constructor() {
+        super();
+        this.stats ||= {tested:0,succeeded:0,startTime:Date.now()};
+    }
     clear(f) {
         if(f) {
             this.delete(f);
@@ -123,25 +98,27 @@ class Agenda extends Map {
             bindings = {};
             this.set(f,bindings)
         }
-        if(trace.agenda) console.log("Agenda:push",f.name||"anonymous",binding);
+        if(this.trace?.agenda) console.log("Agenda:push",f.name||"anonymous",binding);
         if(this.restart) {
             if(this.restart.priority<f.priority) this.restart = f;
         } else {
             this.restart = f;
         }
-        bindings[binding.__reactiveuid__] = binding;
+        bindings[binding.__observableuid__] = binding;
     }
     removeBindingsIncluding(object) {
         this.forEach((bindings) => {
             for(const key in bindings) {
                 const parts = key.split(".");
-                if(parts.includes(object.__reactiveuid__)) {
+                if(parts.includes(object.__observableuid__)) {
                     delete bindings[key];
                 }
             }
         })
     }
     async run({timeout,limit=-1}) {
+        this.stats ||= {tested:0,succeeded:0,startTime:Date.now()};
+        if(agenda?.trace.run) console.log("run", this.stats);
         if(limit===0) {
             stop();
             return;
@@ -158,12 +135,12 @@ class Agenda extends Map {
                 haskey = true;
                 const binding = bindings[key];
                 delete bindings[key];
-                if(trace.agenda) console.log("Agenda:call",f.name||"anonymous",binding);
+                if(this.trace?.agenda) console.log("Agenda:call",f.name||"anonymous",binding);
                 await f.call(f,binding);
                 if(this.restart && this.restart.priority > f.priority) break;
             }
             if(!haskey) {
-                if(trace.agenda) console.log("Agenda:delete",f.name||"anonymous");
+                if(this.trace?.agenda) console.log("Agenda:delete",f.name||"anonymous");
                 this.delete(f);
             }
         }
@@ -173,14 +150,25 @@ class Agenda extends Map {
                 clearTimeout(agenda.run.timeout);
                 agenda.run.timeout = setTimeout(() => this.run({timeout,limit}),timeout);
             } else {
-                stop();
+                this.stop();
             }
         }
     }
+    stop() {
+        clearTimeout(agenda.run.timeout);
+        agenda.run.timeout=-1;
+        const stats = this.stats;
+        stats.endTime = Date.now();
+        stats.secondsRunning = (stats.endTime - stats.startTime) / 1000;
+        stats.testsPerSecond =  stats.tested /  stats.secondsRunning;
+        stats.firesPerSecond =  stats.succeeded /  stats.secondsRunning;
+        if(this.trace?.stop) console.log("stop", stats);
+        delete this.stats;
+    };
 }
 const agenda = new Agenda();
 
-class ReactorEvent {
+class ObservableEvent {
     constructor({type,...rest}) {
         Object.defineProperty(this,"type",{enumerable:true,value:type});
         Object.defineProperty(this,"timestamp",{enumerable:true,value:Date.now()});
@@ -208,24 +196,26 @@ class ReactorEvent {
     }
 }
 
-const isReactor = (target) => target && typeof(target)==="object" && target["__reactiveuid__"];
+const isObservable = (target) => target && typeof(target)==="object" && target["__observableuid__"];
 
-let Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
+let Observable = (target,domain={},{bind,isConstructor,confidence=1,onsubscribe,parent,path=""}={}) => {
     const type= typeof(target);
     if(!target || (type!=="object" && type!=="function")) return target;
-    if(target.__reactiveuid__) return target;
+    if(target.__observableuid__) return target;
     let bindings = []; // arguments that have satisfied the function
     const ctor = Object.getPrototypeOf(target).constructor,
         dependents = {}, // dependent objects by key that can change
         observers = {},
         listeners = {},
-        childReactors = {},
+        childObservables = {},
         conditions = new Map(), // objects as keys, map of properties and values accessed as values, only valid during bound execution
         ctors = Object.entries(domain), // the domain of arguments for a function
-        continues = new Set(), // actions to invoke when a reactive object changes or a reactive function is satisfied
+        continues = new Set(), // actions to invoke when an observable object changes or an observable function is satisfied
         whens = new Map(),
+        routes = [],
         local = {
-            __reactiveuid__: uid(),
+            __observableuid__: uid(),
+            confidence,
             valueOf() {
                 return target.valueOf()
             },
@@ -237,13 +227,13 @@ let Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
             setValue(value) {
                 proxy[Symbol.for("primitive")]=value;
             },
-            retract({source}={}) {
+            /*retract({source}={}) {
                 let result;
                 if(type==="object") {
-                    const event = new ReactorEvent({type:"retract",target:proxy,source});
+                    const event = new ObservableEvent({type:"retract",target:proxy,source});
                     local.handleEvent(event);
                     if(!event.defaultPrevented) {
-                        if(trace.retract) console.log("Reactor:retract",target)
+                        if(trace.retract) console.log("Observable:retract",target)
                         const wm = workingMemory.get(ctor);
                         if(wm) {
                             if(wm.has(proxy)) {
@@ -276,17 +266,20 @@ let Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
                 }
                 return w;
             },
-            then(f,{synchronous}={}) {
+            then(f,{confidence=1,threshold=0}={}) {
                 if(f.toString().includes("[native code]")) { // happens when Javascript engine treats reactor as a Promise
                     f(()=>proxy);
                     return proxy;
                 }
+                const thenconfidence = confidence;
                 continues.add({
-                    f:function(arg,{error,conditions,confidence}) {
-                        if(error && typeof(error)==="object" && error instanceof Error) { throw error; }
-                        return f.call(this,arg,{conditions,confidence})
+                    f:function(arg,{error,conditions,confidence=1}) {
+                        if(confidence>=threshold) {
+                            if(error && typeof(error)==="object" && error instanceof Error) { throw error; }
+                            confidence = confidence*thenconfidence*confidence;
+                            return f.call(this,arg,{conditions,confidence})
+                        }
                     }
-                    ,synchronous
                 });
                 return proxy;
             },
@@ -315,20 +308,42 @@ let Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
                     .forEach((condition,object) => Object.keys(condition)
                         .forEach((property) => object.addDependency({target:proxy,property})));
                 return proxy;
+            },*/
+            route(...args) {
+                routes.push(args);
+                return proxy;
             },
-            addEventListener(eventName,listener,{synchronous,once}={}) {
+            pipe(...args) {
+                if(routes.length>0) throw new Error(`Observable already has ${routes.length} routes. Can't also be a pipe`);
+                routes.push(args);
+                routes.isPipe = true;
+                Object.freeze(routes);
+                return proxy;
+            },
+            addEventListener(eventName,listener,{count= Infinity}={}) {
                 if(!(eventName in eventTypes)) throw new TypeError(`Invalid event name: ${eventName}`);
-                (listeners[eventName] ||= new Map()).set(listener,{listener,options:{synchronous,once}});
+                (listeners[eventName] ||= new Map()).set(listener,{listener,options:{count}});
+                if(target.addEventListener) target.addEventListener(eventName,(event) => this.dispatchEvent(event));
+                return proxy;
+            },
+            subscribe(listener,eventName="*",{count = Infinity}={}) {
+                local.addEventListener(eventName,listener,{count});
+                if(onsubscribe) onsubscribe.call(proxy,proxy);
                 return proxy;
             },
             hasEventListener(eventName,listener) {
+                if(!(eventName in eventTypes)) throw new TypeError(`Invalid event name: ${eventName}`);
                 if(!(eventName in eventTypes)) throw new TypeError(`Invalid event name: ${eventName}`);
                 return [...(listeners[eventName] ||= new Map()).keys()].some((key) => {
                     return listener===key || listener.name===key.name || listener===key.name || listener+""===key+"";
                 })
             },
+            hasSubscription(...args) {
+                return local.hasEventListener(...args);
+            },
             postMessage(eventName,options={}) {
-                local.handleEvent(new ReactorEvent({type:eventName,...options}));
+                if(!(eventName in eventTypes)) throw new TypeError(`Invalid event name: ${eventName}`);
+                local.dispatchEvent(new ObservableEvent({type:eventName,...options}));
             },
             removeEventListener(eventName,listener) {
                 if(!(eventName in eventTypes)) throw new TypeError(`Invalid event name: ${eventName}`);
@@ -337,18 +352,52 @@ let Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
                 })
                 return proxy;
             },
-            handleEvent(event) {
+            unsubscribe(...args) {
+                return local.unsubscribe(...args);
+            },
+            async dispatchEvent(event) {
                 Object.defineProperty(event,"currentTarget",{configurable:true,value:proxy});
-                if((!listeners[event.type] || [...listeners[event.type].values()].every(({listener,options}) => {
-                    if(options.synchronous) {
-                        Object.defineProperty(event,"synchronous",{configurable:true,value:listener})
+                local.provide(event,event.type);
+            },
+            async provide(value,eventName="*") {
+                    let every = true;
+                    listeners["*"] ||= new Map();
+                    for(const {listener,options} of [...listeners["*"].values(),...(eventName==="*" ? [] : listeners[eventName]?.values()||[])]) {
+                        let result = value?.stopPropagation ? value : (Array.isArray(value) ? [...value] : (value && typeof(value)==="object" ? {...value} : value ));
+                        if(routes.length>0) {
+                            for(const route of routes) {
+                                let trynext, childsucceeded;
+                                for(let i=0;i<route.length;i++) {
+                                    result = await route[i](result);
+                                    if(value?.stopImmediate) {
+                                        childsucceeded = false;
+                                        result = null;
+                                        break;
+                                    }
+                                    if(result===undefined) {
+                                        if(routes.isPipe && !trynext) {
+                                            trynext = true;
+                                            continue;
+                                        }
+                                        childsucceeded = false;
+                                        result = null;
+                                        break;
+                                    }
+                                    if(i===0) childsucceeded = true;
+                                }
+                                if(childsucceeded) break;
+                            }
+                        }
+                        if(result==null || value?.stopImmediate) {
+                            every = false;
+                            break;
+                        }
+                        await listener(result);
+                        options.count--;
+                        if(options.count<=0) local.removeEventListener(eventName,listener);
+                        if(result.stop) break;
                     }
-                    options.synchronous ? listener(event) : setTimeout(()=> listener(event));
-                    if(options.once) local.removeEventListener(listener)
-                    return !event.stopImmediate;
-                }))) {
-                    if(parent && !event.stop && !event.stopImmediate) parent.handleEvent(event);
-                }
+                    if(every && parent && !value?.stop && !value?.stopImmediate) parent.provide(value,eventName);
             },
             addDependency({target,property}) {
                 dependents[property] ||= new Set();
@@ -401,7 +450,7 @@ let Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
         },
         doThen = (result,{binding,confidence,conditions}) => {
             let error;
-            result = Array.from(continues).reduce(async (result,{f,synchronous}) => {
+            result = Array.from(continues).reduce(async (result,{f}) => {
                 result = await result;
                 if (result) {
                     try {
@@ -409,25 +458,12 @@ let Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
                     } catch(e) {
 
                     }
-                    if (synchronous) {
-                        try {
-                            result = f.call(proxy, result, {error,conditions,justification:binding,confidence});
-                        } catch (e) {
-                            error = e;
-                        }
-                    } else {
-                        result = new Promise(async (resolve, reject) => {
-                            try {
-                                const value = await f.call(proxy, result, {error,conditions,confidence});
-                                if(error && value===undefined) reject(error);
-                                error = null;
-                                resolve(value);
-                            } catch (e) {
-                                error = e;
-                                resolve(error);
-                            }
-                        })
+                    try {
+                        result = await f.call(proxy, result, {error,conditions,justification:binding,confidence});
+                    } catch (e) {
+                        error = e;
                     }
+                    if(error && value===undefined) throw error;
                 }
                 return result;
             },result);
@@ -455,7 +491,7 @@ let Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
                 value = target[property];
                 if(property==="prototype" || property.toString()=="Symbol(Symbol.unscopables)") return value;
                 const vtype = typeof(value);
-                if(value && vtype==="object") value = childReactors[property] ||= Reactor(value,undefined,{parent:proxy,path:path ? path + "." + property : property}); // only create one reactor
+                if(value && vtype==="object") value = childObservables[property] ||= Observable(value,undefined,{parent:proxy,path:path ? path + "." + property : property}); // only create one reactor
                 if(type==="object") {
                     if(CURRENTWHEN) {
                         const reactors = ctor.functions[property] ||= new Set();
@@ -468,7 +504,8 @@ let Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
                 return value;
             },
             set(_,property,value) {
-                if(property==="confidence") throw new TypeError(`confidence is a read-only reserved property of watchlight reactive data and rules`);
+                //if(property==="confidence") throw new TypeError(`confidence is a read-only reserved property of watchlight observable data and rules`);
+                if(property==="confidence") local.confidence = confidence;
                 if(value===undefined) {
                     delete proxy[property];
                     return true;
@@ -489,16 +526,16 @@ let Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
                 if(oldValue!==value) {
                     let event;
                     if(oldValue===undefined) {
-                        event = new ReactorEvent({type:"defineProperty",target:proxy,property,value})
+                        event = new ObservableEvent({type:"defineProperty",target:proxy,property,value})
                     } else {
-                        event = new ReactorEvent({type:"change",target:proxy,property,value,oldValue})
+                        event = new ObservableEvent({type:"change",target:proxy,property,value,oldValue})
                     }
-                    local.handleEvent(event);
+                    local.dispatchEvent(event);
                     if(!event.defaultPrevented) {
                         if(setprimitive) target = new ctor(value);
                         else target[property] = value;
-                        if(childReactors[property]) {
-                            childReactors[property] = Reactor(value)
+                        if(childObservables[property]) {
+                            childObservables[property] = Observable(value)
                         }
                         if(dependents[property]) {
                             dependents[property].forEach((target) => retract(target,{source:proxy}));
@@ -517,8 +554,8 @@ let Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
                 const oldValue = target[property];
                 delete target[property];
                 if(type==="object") {
-                    const event = new ReactorEvent({type:"delete",target:proxy,property,oldValue});
-                    local.handleEvent(event);
+                    const event = new ObservableEvent({type:"delete",target:proxy,property,oldValue});
+                    local.dispatchEvent(event);
                     if(!event.defaultPrevented) {
                         dependents[property]?.forEach((target) => retract(target,{source:proxy}));
                         dependents[property]?.clear();
@@ -528,19 +565,21 @@ let Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
                 return true;
             },
             apply(target, thisArg, [binding,...args]) {
-                if(target===_Reactor) return target.call(thisArg,binding,...args);
-                if(ctors.length===0) return Reactor(new target(binding,...args));
-                stats.tested++;
+                if(target===_Observable) return target.call(thisArg,binding,...args);
+                if(ctors.length===0 && isConstructor) return Observable(new target(binding,...args));
+                agenda.stats.tested++;
                 CURRENTWHEN = proxy;
                 let result = target.call(thisArg,binding,...args);
                 CURRENTWHEN = null;
                 if(result) {
-                    stats.succeeded++;
-                    const event = new ReactorEvent({type:"fire",target:proxy,thisArg,argumentList:[binding,...args]});
-                    local.handleEvent(event);
-                    if(!event.defaultPrevented) {
-                        const cf = confidence>0 ? Object.values(binding).reduce((cf,value) => Math.min(cf,value.confidence===undefined ? 1 : value.confidence),1) * confidence : undefined;
-                        result = doThen(result,{binding,confidence:cf,conditions:new Map(conditions)});
+                    agenda.stats.succeeded++;
+                    if(["when","whilst"].includes(target.name)) {
+                        const event = new ObservableEvent({type:"fire",target:proxy,thisArg,argumentList:[binding,...args]});
+                        local.dispatchEvent(event);
+                        if(!event.defaultPrevented) {
+                            const cf = confidence>0 ? Object.values(binding).reduce((cf,value) => Math.min(cf,value.confidence===undefined ? 1 : value.confidence),1) * confidence : undefined;
+                            result = doThen(result,{binding,confidence:cf,conditions:new Map(conditions)});
+                        }
                     }
                     //if(!bindings.some((b) => Object.entries(binding).every(([key,value]) => b[key]===value))) {
                      //   bindings[bindings.length] = binding; // slightly faster than push
@@ -552,24 +591,24 @@ let Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
                 return result;
             },
             construct(target,args) {
-                return Reactor(new target(...args));
+                return Observable(new target(...args));
             }
         });
     ctor.functions ||= {};
     if(type==="function") {
         if(ctors.length>0) {
             target.priority = 0;
-            ctors.forEach(([_,ctor]) => {
+            /*ctors.forEach(([_,ctor]) => {
                 let functions = functionsByClass.get(ctor);
                 if(!functions) {
                     functions = new Set();
                     functionsByClass.set(ctor,functions);
                 }
                 functions.add(proxy)
-            });
+            });*/
             try { // force execution so dependencies can be determined
                 const binding = {};
-                ctors.forEach(([key,ctor]) =>binding[key] = Reactor(Object.create(ctor.prototype)));
+                ctors.forEach(([key,ctor]) =>binding[key] = Observable(Object.create(ctor.prototype)));
                 CURRENTWHEN = proxy;
                 target.call(proxy,binding);
                 CURRENTWHEN = null;
@@ -581,126 +620,29 @@ let Reactor = (target,domain={},{bind,confidence,parent,path=""}={}) => {
     }
     return proxy;
 }
-const _Reactor = Reactor;
-Reactor = Reactor(Reactor);
+const _Observable = Observable;
+Observable = Observable(Observable);
 const eventTypes = {
+        "*": true,
     defineProperty: true,
     change: true,
     delete: true,
     fire: true,
-    retract: true
+    retract: true,
+    subscribe: true
 };
-Reactor.registerEventType = function(eventName) {
+Observable.registerEventType = function(eventName) {
     eventTypes[eventName] = true;
 }
-Reactor.unregisterEventType = function(eventName) {
+Observable.unregisterEventType = function(eventName) {
     delete eventTypes[eventName];
 }
 
-
-let stats = {tested:0,succeeded:0,startTime:Date.now()},
-    trace = {};
-const run = (options={}) => {
-    trace = {...options.trace||{}};
-    stats = {tested:0,succeeded:0,startTime:Date.now()};
-    if(trace.run) console.log("run:start", stats);
-    agenda.run({...options});
-}
-
-const stop = () => {
-    clearTimeout(agenda.run.timeout);
-    agenda.run.timeout=-1;
-    stats.endTime = Date.now();
-    stats.secondsRunning = (stats.endTime - stats.startTime) / 1000;
-    stats.testsPerSecond =  stats.tested /  stats.secondsRunning;
-    stats.firesPerSecond =  stats.succeeded /  stats.secondsRunning;
-    if(trace.run) console.log("run:stop", stats)
-};
-
-const reactive = (target,{confidence}={}) => {
+const observable = (target,{isConstructor,confidence,onsubscribe}={}) => {
     const type = typeof(target);
-    if(type==="function") return Reactor(target,{},{confidence});
-    if(!target || type!=="object") throw new TypeError(`Can't create reactive object from ${typeof(target)} ${target}`);
-    return Reactor(target);
-}
-
-const assert = (target,{source,confidence}={}) => {
-    const value = isReactor(target) ? target : reactive(target),
-        ctor = Object.getPrototypeOf(target).constructor;
-    if(confidence) value.withOptions({confidence});
-    let wm = workingMemory.get(ctor);
-    if(!wm) {
-        wm = new Set();
-        workingMemory.set(ctor,wm);
-    }
-    const event = new ReactorEvent({type:"assert",source,target:value});
-    Reactor.handleEvent(event);
-    if(!event.defaultPrevented) {
-        wm.add(value);
-        functionsByClass.getAll(ctor).forEach((f) => f.with(value));
-    }
-    return value;
-}
-
-const retract = (target,{source}={}) => {
-    return target.retract({source});
-}
-const exists = (object,test) => {
-    const entries = Object.entries(object),
-        wm = workingMemory.get(Object.getPrototypeOf(object).constructor)||[];
-    for(const item of wm) {
-        if(test) {
-            if(test(object,item)) return true;
-        } else if(item.equals && object.equals) {
-            if(object.equals(item)) return true;
-        } else if(entries.every(([key,value]) => deepEqual(item[key],value))) {
-            return true;
-        }
-    }
-    return false;
-}
-
-const not = (object,test) => !exists(object,test);
-
-const when = (condition,domain={},{bind,confidence}={}) => {
-    const when = function(objects) {
-        const bool = condition(objects),
-            type = typeof(bool);
-        if(type!=="boolean") throw new TypeError(`when function must return a boolean not ${type}: ${condition}`);
-        if(bool) return objects;
-    }
-    when.condition = condition;
-    return Reactor(when,domain,{bind,confidence});
-}
-
-const whilst = (condition,result,domain={},{bind,confidence,onassert}={}) => {
-    const proxy = when(condition,domain,{bind,confidence})
-        .then((objects,{conditions,confidence}={}) => {
-            const resultobjects = result.call(proxy,objects);
-            Object.entries(resultobjects).forEach(([key,data]) => {
-                if(!(key in objects)) {
-                    if(data && data.constructor===Array) { // do not use Array.isArray, there may be custom arrays in domain
-                        data.forEach((item,i) => { // confidence may have been set using withOptions, so use proxy.confidence
-                            if(onassert) {
-                                const event = new ReactorEvent({type:"assert",source:proxy,target:item});
-                                onassert(event);
-                                if(event.defaultPrevented) return;
-                            }
-                            return data[i] = assert(item,{source:proxy}).withConditions(conditions).withOptions({confidence});
-                        })
-                    } else if(data) {
-                        if(onassert) {
-                            const event = new ReactorEvent({type:"assert",source:proxy,target:data});
-                            onassert(event);
-                            if(event.defaultPrevented) return;
-                        }
-                        resultobjects[key] = assert(data,{source:proxy}).withConditions(conditions).withOptions({confidence});
-                    }
-                }
-            });
-            return resultobjects;
-        });
-    return proxy;
+    if(type==="function") return Observable(target,{},{isConstructor,confidence,onsubscribe});
+    if(!target || type!=="object") throw new TypeError(`Can't create observable object from ${typeof(target)} ${target}`);
+    return Observable(target,{onsubscribe,confidence});
 }
 
 const observer = (f,thisArg,...args) => {
@@ -770,7 +712,32 @@ const Partial = (constructor,data) => {
     if(Array.isArray(data)) data.forEach((item) => instance.push(item)) // should this be isArray(instance)
     else Object.assign(instance,data);
     Object.defineProperty(instance,"constructor",{configurable:true,writable:true,value:constructor.prototype.constructor||constructor});
-    return constructor.__reactiveuid__ ? Reactor(instance) : instance;
+    return constructor.__observableuid__ ? Observable(instance) : instance;
 }
 
-export {reactive,when,whilst,assert,exists,not,retract,observer,unobserve,run,stop,Partial,deepEqual,getFunctionBody,Reactor}
+
+const range = (start,end) => {
+   return observable(function*() {
+        for(let i=start;i<=end;i++) yield i;
+        yield;
+    },
+       {
+           onsubscribe: (target) => {
+                for (const number of target()) target.provide(number);
+           }
+    });
+}
+
+const from = (arg) => {
+    return observable(function*() {
+            for(const item of [...arg]) yield item;
+            yield;
+        },
+        {
+            onsubscribe: (target) => {
+                for (const item of target()) target.provide(item);
+            }
+        });
+}
+
+export {Observable,ObservableEvent,observable,isObservable,range,from,agenda,workingMemory,observer,unobserve,Partial,deepEqual,getFunctionBody} //,functionsByClass

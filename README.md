@@ -1,4 +1,4 @@
-<div style="position:fixed;min-width:100%;opacity:1;background:white;margin-bottom:0px;height:1.5em"><a href="https://watchlight.dev">watchlight.dev</a> v1.0.17 beta</div>
+<div style="position:fixed;min-width:100%;opacity:1;background:white;margin-bottom:0px;height:1.5em"><a href="https://watchlight.dev">watchlight.dev</a> v1.1.1 beta</div>
 <div id="TOC" style="position:fixed;top:2em;max-height:97%;height:97%;opacity:1;background:white">
    <div id="header" style="font-weight:bold;margin-top:0px">
      &nbsp;<span id="toggle-button" style="display:none;float:right;font-weight:bold;margin-top:0px">&lt;&lt;</span>
@@ -19,12 +19,13 @@ light-weight JavaScript module (14K minified, 4.6K gzipped).
 * <a href="#observers">Observers</a> via functions wrapping reactive objects,
   e.g. `observer(() => console.log(myObject.name))`
   will log the `name` every time it changes.
+* A range of `Observable` capability similar to `RxJs`.
 * <a href="#inference-rules">Inference rules</a> similar to  <a href="https://www.drools.org/">Drools</a> or
   <a href="https://www.npmjs.com/package/rools">Rools</a> and modeled after the `Promise` paradigm.
 * <a href="#spreadsheet">Spreadsheets</a> ... no reactive library would be complete without them.
 
-The spreadsheet is provided as a separate file, `./sheet.js` and is not included in the 4.5K size stated above. Sheet is
-currently 5.5K minified and 2K gzipped.
+The spreadsheet and rules are provided as separate files, `rule.js` and `./sheet.js` which are not included in 
+the 4.5K size stated above. They are XXX and YYY respectively.
 
 `Watchlight` does not use any intermediate languages or transpilation; hence, you can debug all of your code as written
 using a standard JavaScript debugger.
@@ -53,212 +54,69 @@ same JavaScript files that are fed to NodeJS on the command line.
 
 `Watchlight` makes extensive use of `Proxy` or other constructs around objects and functions you provide. These
 constructs supplement the behavior of your functions and classes, but `instanceof` will only be true for your original
-symbols. To attempt to make the documentation clear we use the concept of a psuedo-class. A psuedo-class is a
-capitalized entity for which you can't use `instanceof` to check if something is an instance of the capitalized entity.
+symbols, i.e. nothing will ever be an `instanceof` a psuedo-class.
 
 The psuedo-classes include:
 
-* ReactiveObject
+* Observable
 * Observer
+* Subscription
 * Rule
 * Partial
 * Sheet
 * Dimension
 * Cell
 
-## Reactive Objects and Constructors
+## Observable Objects, Constructors and Functions
 
-Reactive objects can have <a href="#event-listeners">event listeners</a> attached, be the subject of
-<a href="#observers">observers</a>, and be referenced by <a href="#inference-rules">inference rules</a>.
+The core of `Watchlight` is the psuedo-class `Observable`. Observable objects are reactive, they drive application in
+a non-procedural manner. They can have <a href="#event-listeners">event listeners and subscribers </a> attached, be the 
+subject of <a href="#observers">observers</a>, and be referenced by <a href="#inference-rules">inference rules</a>.
 
-When the properties of reactive objects contain sub-objects their values are also returned as reactive objects.
+When the properties of Observable objects contain sub-objects, the sub-objects are returned as reactive objects when
+accessed.
 
-If a class constructor is made reactive, it will return a reactive instance when it is called to create a new instance.
-Reactive class constructors do not need to be called with `new`.
+If a class is made Observable and `observeInstances:true` is passed as an option, it will return 
+an Observable instance when it is called to create a new instance.
 
-```javascript
-class Person {
-    constructor({name, age}) {
-        this.name = name;
-        this.age = age;
-    }
-}
-
-Person = reactive(Person);
-const joe = Person({name: "joe", age: 27}); // joe is a reactive object
-```
 
 ### Reactive Object API
 
-#### ReactiveObject reactive(target:object|function)
+#### Observables
 
-Returns: A reactive proxy for the object or function.
+**`Observable Observable(target:object|function [, {global:boolean, observeInstances:boolean}])`**
 
-## Event Listeners
+Wraps target with a Proxy and makes it Observable, i.e. a subject of Subscriptions, Observers, and Rules.
 
-Reactive objects created using `reactive(target)` can dispatch event listeners.
+Setting `global` to `true` when the type of the target is a `function` will make the function available in the `globalThis`
+context.
 
-Event listeners are added via `addEventListener`. They can be revoked via `removeEventListener`. Listeners are indexed
-internally based on their name; hence, adding a new named function with the same name as an existing one will overwrite
-the existing one. Anonymous functions are indexed by their text representation; hence, if you plan to overwrite them,
-you should not use functions that contain closure values and count on the functions being preserved as different event
-handlers.
+Setting `observeInstances` to `true` will automatically make any instances created by a class constructor Observable. Note,
+this will only work for classes defined using `class <className> {}`, not old style JavaScript classes.
 
-The dispatch is done via `setTimeout` to avoid blocking on high volume changes. An optional configuration can be
-provided to cause synchronous dispatch (see <a href="#event-listener-example">example</a> below).
+There are actually some other options, but they are for internal use and remain un-documented for now.
 
-Events bubble up to their target's containing objects, e.g. an event modifying contact info in a child object of a user
-will bubble upto the user object.
+Returns: Observable (Remember, this is a pseudo-class. It is a Proxy around the target.)
 
-### Event Listener API
+#### Observers
 
-#### ReactorEvent(config:object)
+`Watchlight` supports many of the functions of [RxJs](https://rxjs.dev/), but is also supports a somewhat simpler 
+reactive concepts, the Observer. Observers are functions that get invoked automatically every time
+the properties on the Observeable objects they reference change in value. They are more powerful that event listeners
+because they can operate across multiple objects.
 
-An object with the string property `type` containing an event name, e.g. `{type:"change"}`. Other properties vary based
-on event type and may include:
+Those familiar with `RxJs` can think of `observers` as functions that automatically subscribe to an `Observable` when the
+`Observable` detects that the `observer` accesses some of its properties. What is super powerful about `Observer` is that
+it will automatically subscribe across multiple `Observables`.
 
-* `target` - the reactive proxy generating the event
-* `currentTarget` - the `target` or object further up the tree as a result of bubbling
-* `property` - the property impacted on the `target`
-* `value` - the current value of the `property`
-* `oldValue` - the previous value of the `property` before the event
+Observers are the cornerstone of the `watchlight` <a href="#spreadsheet">spreadsheet</a> functionality. A slimmed down
+version is also used in the [Lightview reactive UI library](https://lightview.dev).
 
-Typically, created automatically by `watchlight`, rather than by an application developer. However, it is possible to
-add <a href="#custom-event-types">custom event types</a>.
-
-Events will bubble up an object to its containing objects. For the data below, event handlers registered on
-`object` will get events for changes to `aPerson`.
+##### Observer Examples
 
 ```javascript
-const object = reactive({person: {name: "joe", age: 27}}),
-    aPerson = object.person;
-```
-
-The API is very similar to
-the <a href="https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener" target="_tab">
-browser API of the same name.</a>
-
-All the bubble stopping methods below will throw an error if used on asynchronous event handlers.
-
-#### void reactorEvent.preventDefault()
-
-Prevents the event type from occurring after the current handler. For example, if there is a `change` handler and it is
-the first handler and synchronous, calling `preventDefault` will stop the change from occurring. The event will still
-bubble.
-
-For rules, this means the actions will not be executed.
-
-#### void reactorEvent.stopPropagation()
-
-Stops bubbling when called from a synchronous listener, but all listeners on the current object will continue to
-execute.
-
-#### void reactorEvent.stopImmediatePropagation()
-
-Stops bubbling when called from a synchronous listeners, and all subsequent listeners will be blocked.
-
-#### ReactiveObject reactiveObject.addEventListener( eventName:string, listener:function, options:Object)
-
-Adds a `function` as an event listener on the `eventName`. The listener will receive a `ReactorEvent` when the
-`eventName` occurs on the `reactiveObject`, i.e. the listener has the signature `({event,....rest})`.
-
-The `options` argument has the surface `{synchronous,once}`.
-
-Returns: The `reactiveObject`.
-
-#### boolean reactiveObject.hasEventListener( eventName:string, listener:function|string)
-
-Checks for existence of function of the same name or in the case of anonymous functions same string representation as a
-listener for `eventName` on the `reactiveObject`.
-
-Returns: The `true` or `false`.
-
-#### ReactiveObject reactiveObject.removeEventListener( eventName:string, listener:function|string)
-
-Removes a listener for `eventName` with the same name or that is the function on the `reactiveObject`.
-
-Returns: The `reactiveObject`.
-
-### Built-in Event Names
-
-Some of the events below are only supported by <a href="#inference-rules">Inference Rules</a>.
-
-Also see <a href="#custom-event-types">custom event types</a>.
-
-#### assert
-
-A special event type that can be handled by calling `Reactor.addEventListener("assert", listener)`. The
-`listener` will get invoked whenever new data is inserted into rule accessible memory. See
-<a href="#rule-processing">rule processing</a>.
-
-#### change
-
-Listeners on the event name `change` are invoked whenever a property value is changed on an object.
-
-#### defineProperty
-
-Listeners on the event name `defineProperty` are invoked whenever a new property is defined on an object. A new property
-is assumed if the previous value of a property is `undefined`.
-
-#### delete
-
-Listeners on the event name `delete` are invoked whenever a property is deleted from an object.
-
-#### fire
-
-A special event supported by <a href="#inference-rules">Inference Rules</a> when their conditions are satisfied.
-
-#### retract
-
-A special event supported by objects that have been asserted for use by <a href="#inference-rules">Inference Rules</a>.
-Fires when the object is removed from working memory.
-
-### Event Listener Example
-
-```javascript
-const aPerson = reactive({name: "joe", age: 27});
-aPerson.addEventListener("defineProperty", ({type, target, reactor, property, value}) => {
-    console.log(type, target);
-});
-aPerson.addEventListener("change", ({type, target, reactor, property, value, oldValue}) => {
-    console.log(type, target);
-});
-aPerson.addEventListener("delete",
-    function myDelete({type, target, reactor, property, oldValue}) {
-        console.log(type, target);
-    },
-    {synchronous: true});
-
-aPerson.married = true; // invokes the defineProperty handler asynchronously using setTimeout
-aPerson.age = 30; // invokes the change handler asynchronously using setTimeout with the oldValue as 27
-delete aPerson.age; // invokes the delete handler synchronously with the oldValue as 30 (due to the change above)
-
-aPerson.removeEventListener("change", ({type, target, reactor, property, value, oldValue}) => {
-    console.log(type, target);
-});
-aPerson.removeEventListener("delete", "myDelete"); // removes the delete event listener
-aPerson.removeEventListener("delete", function myDelete() {
-}); // also removes the delete event listener
-```
-
-### Custom Event Types
-
-You can add custom event types by using `Reactor.registerEventType(eventName)`. You can then add and use event listeners
-that will automatically get invoked and support the standard API when events are posted
-using `reactiveObject.postMessage(eventName,options={})`.
-
-## Observers
-
-Observers are functions that get invoked automatically every time the properties on the reactive objects they reference
-change in value. They are more powerful that event handlers because they can operate across multiple objects.
-
-Observers are the cornerstone of the `watchlight` <a href="#spreadsheet">spreadsheet</a> functionality.
-
-### Observer Examples
-
-```javascript
-const user = reactive({name: "mary"});
-const hello = observer(() => {
+const user = Observable({name: "mary"});
+const hello = Observer(() => {
     console.log("Hello", user.name);
 })
 user.name = "joe";
@@ -272,11 +130,11 @@ Hello joe
 ```
 
 Nested property access automatically creates child reactors, changes to which will invoke the observer so long as the
-changes are made via navigation through the parent reactor.
+changes are made via navigation through the Observable `user`.
 
 ```javascript
-const user = reactive({name: "mary", contactInfo: {phone: "555-555-5555"}});
-observer(() => {
+const user = Observable({name: "mary", contactInfo: {phone: "555-555-5555"}});
+Observer(() => {
     console.log(JSON.stringify(user)); // recursively accesses every property
 })
 user.contactInfo.phone = "999-999-9999";
@@ -292,8 +150,8 @@ logs
 You can call an `Observer` directly:
 
 ```javascript
-const user = reactive({name: "mary", contactInfo: {phone: "555-555-5555"}}),
-    logUser = observer(() => {
+const user = Observable({name: "mary", contactInfo: {phone: "555-555-5555"}}),
+    logUser = Observer(() => {
         console.log(JSON.stringify(user)); // recursively accesses every property
     })
 logUser();
@@ -303,25 +161,24 @@ logs
 
 ```shell
 {"name":"mary","contactInfo":{"phone":"555-555-5555"}}
+{"name":"mary","contactInfo":{"phone":"555-555-5555"}}
 ```
 
-### Observer API
+#### Observer API
 
-#### Observer observer(aFunction:function [,thisArg:object,...args:any])
+**`Observer Observer(aFunction:function [,thisArg:object,...args:any])`**
 
-Creates an observer from `aFunction` you provide. The observer will be called any time the properties on the objects it
-references change in value. You can also call the observer directly like it was the original function.
+Creates an Observer from `aFunction` you provide. The Observer will be called any time the properties on the objects it
+references change in value. You can also call the Observer directly like it was the original function.
 
-Observers are indexed internally by name. Creating an observer from a new function with the same name as a previous
-observer will overwrite the old observer. Anonymous functions are not.
+Observers are indexed internally by name. Creating an observer from a function with the same name as a previous
+observer will overwrite the old observer. Anonymous functions are not overwritten.
 
 You can pass a default `thisArg` and `...args` when creating an `Observer`.
 
-Synchronously invoked sub-functions will cause reactive dependencies for the containing observer. Use `unobserve` to
-avoid dependencies.
-
-Asynchronously invoked sub-functions, e.g. those inside `setTimeout` or a `Promise` will not cause reactive
-dependencies.
+Synchronously invoked sub-functions that access Observable data will create reactive dependencies that can cause 
+invocation of the Observer at a later time. Use `unobserve` to avoid creating a reactive dependency. Asynchronously 
+invoked sub-functions, i.e. those inside `setTimeout` will not cause reactive dependencies.
 
 ```javascript
 import {reactive, observer} from "../../watchlight.js";
@@ -357,20 +214,20 @@ Welcome to the world joe
 Hello joe
 ```
 
-#### void observer.stop()
+**`void observer.stop()`**
 
 Stops `observer` from executing when the objects it references change.
 
-#### void observer.start()
+**`void observer.start()`**
 
 Restarts the `observer` so it will respond when the objects it references change.
 
-#### Observer observer.withOptions( {onerror:function} )
+**`Observer observer.withOptions( {onerror:function} )`**
 
 `Observer` error handling defaults to re-throwing errors thrown by wrapped functions. This can be changed to swallow the
 error by passing `{onerror:()=>{}}` or use the error as the value by passing `{onerror:(e) => e}`.
 
-#### any unobserve( aFunction:function )
+**`any unobserve( aFunction:function )`**
 
 You can nest `unobserve` inside an observer if you do not want changes to a particular object or property to cause
 invocation of the observer.
@@ -419,6 +276,281 @@ const doTasks = observer(() => {
 setTimeout(() => tasks.push(reactive({name: "task5", duration: 2000})), 10000);
 ```
 
+##### Subscriptions and Event Listeners
+
+Reactive objects created using `Observable(target)` can dispatch event listeners similar to those used in web browsers.
+
+Event listeners are added via `subscribe`. They can be revoked via `unsubscribe`. If the `target` supports
+`addEventListener`, e.g. if you make a `DOMElement` Observable, then `addEventListener` is also supported. Listeners
+are indexed internally based on their text representation; hence, if you plan to overwrite them,
+you should not use functions that contain closure values and count on the functions being preserved as different event
+handlers.
+
+**`Subscription subscribe(subscription: function|string|ObservableEventDescriptor, target:Observable)`**
+
+You will usually pass a function as the value for `subscription` when subscribing. The name of the function should be the event 
+type you wish to subscribe to. If you pass an un-named function, it will be invoked for all events.
+
+Passing a string for `subscription` is only useful for pipelined subscriptions and is covered in more detail elsewhere.
+
+The function or string passed is actually just a shorthand for an `ObservableEventDescriptor` which has the surface
+`{eventType: string, listener: function}`.
+
+```javascript
+class Person {
+    constructor({name, age}) {
+        this.name = name;
+        this.age = age;
+    }
+}
+
+Person = Observable(Person);
+const joe = Person({name: "joe", age: 27}); // joe is a reactive object
+subscribe(function change({target,property,value,oldValue}) {
+    console.log(`${target.name}'s ${property} is changing from ${oldValue} to ${value}`)
+},joe);
+```
+
+Functions can be made into Observables. When they are, you can subscribe to the invocation.
+
+```javascript
+function helloWorld() {
+    console.log("Hello world!");
+}
+subscribe(function apply({target,thisArg,argsList}) {
+    console.log(`${target.name} is about to execute`);
+},helloWorld);
+```
+
+You may have noted from the above that subscriptions are notified prior to an activity occuring, this allows
+the activity to be cancelled just like DOM events.
+
+```javascript
+subscribe(function change({target,property,value,oldValue,preventDefault}) {
+    if(CURRENTUSER.name!==target.name) {
+        event.preventDefault();
+        alert(`You can only change your own name!`);
+    }
+},joe);
+```
+
+That's the basics, we cover more advanced use of Subscriptions later.
+
+**`void observableInstance.addEventListener( eventType:string, listener:function, options:Object)`**
+
+Only available if the target of the `observableInstance` supports `addEventListener` like a DOM Element.
+
+Adds a `function` as an event listener on the `eventName`. The listener will receive an `ObservableEvent` when the
+`eventName` occurs on the `observableInstance`, i.e. the listener has the signature `({event,....rest})`.
+
+The `options` argument has the surface `{synchronous,once}`.
+
+Returns: `void`. If you want chaining, use `subscribe`.
+
+**`boolean observableInstance.hasEventListener( eventType:string, listener:function)`**
+
+Only available if the target of the `observableInstance` supports `addEventListener` like a DOM Element.
+
+Checks for existence of function with the same string representation as a listener for `eventName` on the `reactiveObject`.
+
+Returns: The `true` or `false`.
+
+**`boolean observableInstance.removeEventListener( eventType:string, listener:function)`**
+
+Only available if the target of the `observableInstance` supports `removeEventListener` like a DOM Element.
+
+Removes a listener for `eventName` with the same text representation as `listener`.
+
+Returns: The `true` if the `listener` was found and removed, otherwise `false`.
+
+#### ObservableEvent
+
+**`ObservableEvent(config:object)`**
+
+An object with the string property `type` containing an event name, e.g. `{type:"change"}`. Other properties vary based
+on event type and may include:
+
+* `target` - the reactive proxy generating the event
+* `currentTarget` - the `target` or object further up the tree as a result of bubbling
+* `property` - the property impacted on the `target`
+* `value` - the current value of the `property`
+* `oldValue` - the previous value of the `property` before the event
+
+Typically, `ObservableEvents` are created automatically by `watchlight`, rather than by an application developer. However,
+it is possible to add <a href="#custom-event-types">custom event types</a>.
+
+Events will bubble up from an object to its containing objects. For the data below, subscribers registered on
+`object` will get events for changes to `aPerson.name`.
+
+```javascript
+const object = reactive({person: {name: "joe", age: 27}}),
+    aPerson = object.person;
+aPerson.name = "mary";
+```
+
+The `ObservableEvent` API is very similar to the <a href="https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener" target="_tab">
+browser Event API.</a> However, unlike DOM nodes, regular objects can be contained by multiple parents; hence,
+bubbling can propagate more widely.
+
+**`void observableEvent.preventDefault()`**
+
+Prevents the event type from occurring. For example, if there is a `change` Subscription (a.k.a. listener) calling
+`preventDefault` will stop the change from occurring. The event will still bubble.
+
+**`void observableEvent.stopPropagation()`**
+
+Stops bubbling to parent objects, but all subscribers on the current object will continue to get the event.
+
+**`void observableEvent.stopImmediatePropagation()`**
+
+Stops bubbling when called from a subscription, and all subsequent subscriptions will be blocked.
+
+#### Interface ObservableEventDescriptor
+
+**`{eventType:string, listener:function}`**
+
+The built-in event types are described below. Also see <a href="#custom-event-types">custom event types</a>.
+
+**&ast;**
+
+A wild card that will match any event.
+
+**`apply`**
+
+Listeners on the event name `apply` are invoked when an Observable function is about to execute.
+
+**`change`**
+
+Listeners on the event name `change` are invoked whenever a property value is changing on an Observable.
+
+**`defineProperty`**
+
+Listeners on the event name `defineProperty` are invoked whenever a new property is being defined on an Observable. A new property
+is assumed if the previous value of a property is `undefined`.
+
+**`delete`**
+
+Listeners on the event name `delete` are invoked whenever a property is deleted from an Observable.
+
+**`fire`**
+
+A special event supported by <a href="#inference-rules">Inference Rules</a> when their conditions are satisfied.
+
+**`retract`**
+
+A special event supported by Observables that have been asserted for use by <a href="#inference-rules">Inference Rules</a>.
+Fires when the object is being removed from imnstances tracked by its constructor.
+
+#### Event Listener Example
+
+```javascript
+const aPerson = reactive({name: "joe", age: 27});
+aPerson.addEventListener("defineProperty", ({type, target, reactor, property, value}) => {
+    console.log(type, target);
+});
+aPerson.addEventListener("change", ({type, target, reactor, property, value, oldValue}) => {
+    console.log(type, target);
+});
+aPerson.addEventListener("delete",
+    function myDelete({type, target, reactor, property, oldValue}) {
+        console.log(type, target);
+    },
+    {synchronous: true});
+
+aPerson.married = true; // invokes the defineProperty handler asynchronously using setTimeout
+aPerson.age = 30; // invokes the change handler asynchronously using setTimeout with the oldValue as 27
+delete aPerson.age; // invokes the delete handler synchronously with the oldValue as 30 (due to the change above)
+
+aPerson.removeEventListener("change", ({type, target, reactor, property, value, oldValue}) => {
+    console.log(type, target);
+});
+aPerson.removeEventListener("delete", "myDelete"); // removes the delete event listener
+aPerson.removeEventListener("delete", function myDelete() {
+}); // also removes the delete event listener
+```
+
+#### Custom Event Types
+
+You can add custom event types by using `Reactor.registerEventType(eventName)`. You can then add and use event listeners
+that will automatically get invoked and support the standard API when events are posted
+using `reactiveObject.postMessage(eventName,options={})`.
+
+#### Advanced Subscription Use
+
+Subscriptions support the routing and piping of events.
+
+The below watches for clicks on a button, ignores clicking faster than 1 every second, delays 5 seconds and
+logs the click to the console.
+
+```javascript
+registerEventTypes("click");
+
+const observableInstance = Observable(document.getElementById("mybutton"));
+subscribe("click" ,observableInstance)
+    .pipe([timeThrottle(1000),delay(5000)])
+    .subscribe((event) => {
+        console.log(event);
+    });
+```
+
+The function `subscribe` knows to expect an Observable as the second argument. So, unless you need to reference
+your Observable elsewhere, you can shorten the above code and the Observable
+will be automatically created.
+
+```javascript
+registerEventTypes("click");
+
+subscribe("click" ,document.getElementById("mybutton"))
+    .pipe([timeThrottle(1000),delay(5000)])
+    .subscribe((event) => {
+        console.log(event);
+    });
+```
+
+Above `pipe` is a method on Subscription returned by `subscribe`. `Watchlight` also exposes `pipe` and `route` as
+top level functions. So, you can make your code even shorter.
+
+```javascript
+registerEventTypes("click");
+
+pipe([timeThrottle(1000),delay(5000)],document.getElementById("mybutton"))
+    .subscribe(click(event) => {
+        console.log(event);
+    });
+```
+
+And, since you are wrapping a DOM Element, you can use `addEventListener` if you prefer.
+
+```javascript
+pipe([timeThrottle(1000),delay(5000)],document.getElementById("mybutton"))
+    .addEventListener("click",(event) => {
+        console.log(event);
+    });
+```
+
+`Watchlight` also supports `route`, which behaves the same way as most event or http routers with middleware.
+
+```javascript
+    Observable(document.getElementById("myInput"))
+        .subscribe("change")
+        .route(({target}) => target.value==="joe", ({target}) => ... do something)
+        .route(({target}) => target.value==="mary", ({target}) => ... do something)
+        .route(() => throw new TypeError(`${target.value} must be mary or joe`))
+```
+
+Routes are committed to once the first function in the route succeeds. Then the remaining functions are called until 
+one returns `undefined` or calls a `preventDefault`, `stopPropagation`, or `stopImmediatePropagation` on the event it 
+gets as an argument.
+
+Under the hood, `pipe` just creates a single route and then locks the subscription so that no more routes can be added.
+
+You will find many of the same pipeline operators as provided by RxJs, e.g.
+
+`count`, `debounce`, `delay`, `filter`, `timeThrottle`, `map`, etc. There are also some additional operators, e.g. 
+`sum`, `average`.
+Since the list is long and each requires its own explanation, they are provided in a [separate file](./operators.html)
+so that we can move on to inference rules.
+
 ## Inference Rules
 
 Inference rules can match across multiple objects up and down the inheritance hierarchy. They can chain across
@@ -432,7 +564,7 @@ inference engine does not use the <a href="https://en.wikipedia.org/wiki/Rete_al
 derivative like most rule engines. However, it is small (4K minified/gzipped) and fast. And, this means you can use the
 JavaScript debugger to step through all of your code as it is written.
 
-Watchlight is currently in beta, but tests on an 8 MB Ryzen 4000 5 show that 120,000 to 160,000+ rule tests can be
+`Watchlight` is currently in beta, but tests on an 8 MB Ryzen 4000 5 show that 250,000+ rule tests can be
 processed per second in Firefox, Chrome, Edge and NodeJS, even when the potential rule matches exceed 1 million
 combinations of objects. The number of rules that actually fire per second is entirely dependent on the nature of the
 logic being modelled. If no rule conditions are satisfied, no rules will fire! Head-to-head comparisons of different
@@ -442,18 +574,16 @@ rule processing engines can only be made using the same rule and data sets.
 
 Rules consist of:
 
-* `condition` - A single function that accepts one object as an argument and must return `true` or `false`. Conditions
-  should be side effect free. Modify working memory or call non-synchronous or side effect producing functions in
-  conditions at your own risk.
-* `logically dependent data (optional)` - only present for <a href="#whilst">`whilst`</a> not <a href="#when">`when`</a>
-  rules.
+* `condition` - A single synchronous function that accepts one object as an argument and must return `true` or `false`. 
+The property names effectively represent variables in the condition. The values of the properties must be instances
+created from classes defined using `class <classname> { }`. Conditions should be side effect free. Create new objects
+or call non-synchronous or side effect producing functions in conditions at your own risk.
 * `domain` - An object with the same properties as the argument to `condition`. The values of the properties are the
   expected classes of the values in the `condition` argument.
-* `options (optional)` - An optional chained call providing configuration data for the rule.
-* `actions` - A series of chained `then` statements, the first of which usually gets the same argument as
+* `options (optional)` - Configuration data for the rule.
+* `actions` - A series of chained `then` statements, the first of which gets the same argument as
   the `condition`. Subsequent `actions` get the return value of the preceding `action` as their arguments. Chaining
-  stops when an `action`
-  returns `undefined`.
+  stops when an `action` returns `undefined`.
 * `exception handlers` - One or more `catch` statements interspersed with `actions`, although usually just the last
   statement.
 
@@ -464,8 +594,9 @@ when(
             typeof (person1.age) === "number" &&
             typeof (persone2.age) === "number"
     }, // end condition
-    {person1: Person, perrdon2: Person} // domain
-).withOptions({priority: 10}) // options
+    {person1: Person, perrdon2: Person},// domain
+    {priority:10} // options
+    )
     .then(({person1, person2}) => { // first action
             return {person1, person2, avgAge: person1.age / person2.age}
         }
@@ -498,19 +629,31 @@ Rules are processed in a cycle with a run limit that may be Infinity:
 ### Rule Examples
 
 ```javascript
+import {when,Observable} from "./rule.js";
+class Person {
+    constructor({name,age}) {
+        if(name==null || age==null) throw new TypeError("Person requires both name and age")
+        this.name = name;
+        this.age = age;
+    }
+}
+Person = Observable(Person);
+
 when(({object}) => true, {object: Object})
     // runs every time a new Object is added or changed
     .then(({object}) => console.log(object))
-assert(new Person({name: "joe"}));
-assert({count: 1});
+new Person({name: "joe"});
 ```
 
 logs
 
 ```shell
 Person {name:"joe"}
-{count: 1}
 ```
+
+Note the import of `Observable` from `rule.js` rather than `watchlight.js`. This version of `Observable` has been
+enhanced to support rule processing. Specifically it ensures the Observable classes keep track of all their instances
+in a manner that makes rules the most efficient. It also enables the creation of pseudo-class Partial objects (see below).
 
 ```javascript
 when(({person}) => person.age < 21, {person: Person})
@@ -520,60 +663,24 @@ when(({person}) => person.age < 21, {person: Person})
 ```
 
 ```javascript
- whilst(function match({person1, person2}) {
+Combo = Observable(Combo);
+when(({person1, person2}) => {
         // creates pairs of people, automatically removes pair 
         // if a person's name changes or a person is removed
         // Combo has an equals methods on it so that it is reflexive
         return person1.name !== person2.name && not(Combo(person1, person2));
     }, // then, create pair
     ({person1, person2}) => {
-        return {combo: Combo(person1, person2)}
-    },
-    {person1: Person, person2: Person})
-    .then(({combo}) => console.log("A pair:", combo))
-// NOTE: then gets the newly created Combo object as its argument
-// The pair creation function coould also have returned the person objects
+        return this.justifies({person1,person2},new Combo(person1, person2))
+    })
+    .then((combo) => console.log("A pair:", combo))
 ```
+
+Note the use of `Combo` without the word `new` in the rule test. `Combo` will test like it is an instance of Combo,
+but it is not created with the Combo constructor. `Watchlight` support a concept called `Partials`, which are partially
+populated instanced of classes that will not throw construction errors or trigger other rules.
 
 ### Rules API
-
-#### Object Partial( constructor:function, data:object )
-
-Sometimes it is useful to match a partial object against working memory. The class constructors you use may have
-required arguments that prevent this. `Partial` addresses this problem. If you pass the class or a traditional
-JavaScript constructor and an object containing data to use for initialization, `Partial` will return an object that
-seems to be an `instanceof` the constructor.
-
-```javascript
-class Desk {
-    constructor(location) {
-        if (location === undefined) {
-            throw new TypeError("'location' is required for Desk");
-        }
-        this.location = location;
-    }
-
-    assign(person) {
-        this.assigned = person;
-    }
-}
-
-when(({person}) => {
-    return not(Partial(Desk, {assigned: person}))
-}, {person: Person})
-    .then(({person}) => {
-        console.log(person, "is not assigned a desk")
-    });
-```
-
-#### ReactiveObject assert( data:object|ReactiveObject )
-
-Adds data to the working memory used by rules. Automatically turns `object` into a reactive object, if it was not
-already.
-
-```javascript
-const joe = assert(new Person({name: "joe", age: 27}));
-```
 
 #### any rule.catch( errorHandler:function )
 
@@ -587,8 +694,7 @@ If the `errorHandler` throws, the next `catch` statement will be sought.
 
 #### boolean exists( object:Object [,test:function] )
 
-Checks to see if an object or partial object exists. Typically, used as part of rule condition. It is frequently used in
-combination with `Partial`
+Checks to see if an object or partial object exists. Typically, used as part of rule condition.
 
 ```javascript
 let joe = reactive(new Person({name: "joe", age: 20})),
@@ -597,13 +703,13 @@ let joe = reactive(new Person({name: "joe", age: 20})),
 // true
 joeexists = exists(joe);
 // true because of joe
-namedjoeexists = exists(new Partial(Person, {name: "joe"}));
+namedjoeexists = exists(Person({name: "joe"})); // a Partial not really a Person, will not throw error or trigger rules
 // false because joe is 20 and mary is not asserted
-rightageexists = exists(new Partial(Person, {age: 21}));
+rightageexists = exists(Person({age: 21}));
 // false, because mary was not asserted to rule memory
-namedmaryexists = exists(new Partial(Person, {name: "mary"}));
+namedmaryexists = exists(Person({name: "mary"}));
 // true, because a Person that has all the same properties and values, i.e. mary, exists
-deepequalexists = exists(new Person({name: "mary", age: 27})); 
+deepequalexists = exists(Person({name: "mary", age: 27})); 
 ```
 
 #### any rule.then(action:function,{conditions})
@@ -633,25 +739,16 @@ Returns: the return value of `action`.
 
 A convenience, equivalent to `!exists(object)`.
 
-#### ReactiveObject retract( object:Object )
+#### boolean retract( object:Object )
 
-Removes data from the working memory used by rules.
+Stops the object from being tracked by the Observer class that created it. As a result, rules will not have access to
+it and any objects created in the scope of `justifies`, where the `object` was part of a justification will be removed.
 
-Returns: Reactive `ReactiveObject` proxy for the data if it was in working memory, otherwise `undefined`.
-
-```javascript
-let joe = reactive(new Person({name: "joe", age: 27})),
-    mary = reactive(new Person({name: "mary", age: 27})),
-    joe = assert(joe);
-// joe is still defined because joe was in owrking memory
-joe = retract(joe);
-// mary is now undefined because she did not exist in working memory
-mary = retract(mary)
-```
+Returns: Reactive `true` if the `object` was being tracked, i.e. was not previously retracted. Otherwise, false,
 
 <a id="when"></a>
 
-#### Rule when(condition:function,domain:Object)
+#### Rule when(condition:function, domain:Objectv [,{priority:number, confidence:float])
 
 The `condition` can be an anonymous or named function. The call signature of `condition` is `(object:Object)` where
 `object` must be an Object with one or more properties. The `condition` MUST return `true` or `false` indicating if the
@@ -659,6 +756,12 @@ members of the `object` satisfy the rule conditions.
 
 The `domain` MUST be an Object with the same properties as the `object` argument to `condition`. The values of the
 properties MUST be classes or constructors.
+
+`confidence` sets a confidence on a rule or Observable data. This is available to the `justifications` function and also
+via `this.withConfidence` in the `then` postions of a rule.
+a `confidence` = minimum confidence of data used to fire the rule * confidence of the rule. You can run the
+example <a href="./examples/rules/diagnostic-confidence.html" target="_tab">diagnostic confidence</a> or view its
+<a href="./examples/rules/diagnostic-confidence.js" target="_tab">source</a>.
 
 Returns: Reactive `Proxy` for `condition`, i.e. a `Rule`.
 
@@ -705,41 +808,8 @@ whilst(
 
 The `retract` handler will fire if either person in the `Combo` is deleted or has a name change.
 
-#### ReactiveObject reactiveObject.withConditions( conditions:Map )
 
-A `whilst` rule automatically manages logical dependency of data. However, there may be times when you want to manage
-the dependency directly. The `withConditions` function can support you in this.
 
-The `conditions` provided to `then` is the data which causes a rule to fire. The match rule above could be written as:
-
-```javascript
-whilst(
-    function match({person1, person2}) { // condition
-        return person1.name !== person2.name && not(Combo(person1, person2));
-    },
-    {person1: Person, person2: Person}) // domain
-    .then(function ({person1, person2}, {conditions}) {
-        const combo = assert(Combo(person1, person2)).withConditions(conditions);
-        console.log("asserted", combo);
-        return combo;
-    })
-    .then((combo) => { // watch for retraction
-        return combo.addEventListener("retract", () => {
-            console.log("retracted", combo)
-        })
-    })
-    .then((combo) => console.log("A pair!", combo))
-```
-
-#### Rule rule.withOptions( {priority:number, confidence:number} )
-
-`priority` sets a priority on a rule. If multiple rules are matched at the same time, the highest priority rules fire
-first. The actions of these rules may result in lower priority rules no longer firing.
-
-`confidence` sets a confidence on a rule or reactive data. If a `whilst` rule is created, then any assertions have
-a `confidence` = minimum confidence of data used to fire the rule * confidence of the rule. You can run the
-example <a href="./examples/rules/diagnostic-confidence.html" target="_tab">diagnostic confidence</a> or view its
-<a href="./examples/rules/diagnostic-confidence.js" target="_tab">source</a>.
 
 ### Instance Bound Rules
 
@@ -840,27 +910,6 @@ setTimeout(() => { // let recalculation settle out
     console.log(sheet.B[1].valueOf()); // logs 9
 })
 ```
-
-During this early release, there are only basic functions on a `Sheet`, you may need to add more as a first argument:
-
-```javascript
-const sheet = Sheet({
-    reverse(value) {
-        if (value) {
-            if (typeof (value.reverse) === "function") {
-                return value.reverse();
-            }
-            if (typeof (value) === "string") {
-                return value.split().reverse().join();
-            }
-        }
-    }
-})
-```
-
-***Note***:  You can't add custom functions that are closures around variables that are out of scope to a `Sheet`. Due
-to the asynchronous nature of internal `Sheet` processing and the use of `setTimeout`, using a function like this will
-result in an error that may or may not be thrown in a manner you can catch it.
 
 `Sheet` functions behave like their similarly named counterparts in MS Excel and Google Sheet.
 
@@ -1028,6 +1077,14 @@ A custom commercial license. Contact syblackwell@anywhichway.com.
 ## Change History
 
 Reverse Chronological Order
+
+2022-04-20 v1.1.1b Modified naming to be more consistent with `RxJs`. Added a range of `RxJs` operators. Corrected
+issue where `bubbles` and `defaultPrevented` were ignored on events.
+Split rule functionality into a separate file. Deprecated `whilst` for simpler `justifies` approach. Optimized rule 
+processing with some light-weight indexing to support faster `retract` and `not`. Eliminated `assert`, creating an 
+`Obervable` object automatically invokes the rules it may match. Eliminated `withOptions` on rules to simplify API.
+Modified `Sheet` so that closures can ultimately be supported. This required changing the way default tabs can be established for
+cell formula references. Added many functions for use in formulas.
 
 2022-04-03 v1.0.17b Updated license token to more standard form.
 

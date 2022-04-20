@@ -1,4 +1,6 @@
-import {run,assert,when,not,reactive} from "../../watchlight.js";
+import {when,not,getStats,Observable,run} from "../../rule.js";
+
+globalThis.getStats = getStats;
 
 /* Using rules to compute Fibonacci numbers is not very efficient; however, it is a good may to stress rules across
 a large number of fact combinations. Generating a Fibonacci sequence of 100 creates 1,000,000 combinations of
@@ -7,19 +9,26 @@ objects for the compute function below.
 
 const sequenceSize = 100;
 
-function Fibonacci({sequence,value=-1}) {
-    if(!this || !(this instanceof Fibonacci)) return new Fibonacci({sequence,value});
+const sequence = [];
+
+
+/*function Fibonacci({sequence,value=-1}) {
     this.sequence = sequence;
     this.value = value;
+}*/
+class Fibonacci {
+    constructor({sequence,value=-1}) {
+        this.sequence = sequence;
+        this.value = value;
+    }
 }
-Fibonacci = reactive(Fibonacci)
+Fibonacci = Observable(Fibonacci)
 
 when(function recurse({f}) {
     return f.value === -1 && not(Fibonacci({sequence:1}))
-},{f:Fibonacci})
-    .withOptions({priority:10})
+},{f:Fibonacci},{priority:10})
     .then(({f}) => {
-        assert(Fibonacci({sequence:f.sequence - 1}))
+        new Fibonacci({sequence:f.sequence - 1})
     });
 
 when(function bootstrap({f}) {
@@ -27,7 +36,7 @@ when(function bootstrap({f}) {
 },{f:Fibonacci})
     .then(({f}) => {
         f.value = 1;
-        console.log(`${f.sequence}:${f.value}`);
+        sequence[f.sequence-1] = f.value;
     });
 
 when(function calculate({f1,f2,f3}) {
@@ -35,9 +44,14 @@ when(function calculate({f1,f2,f3}) {
 },{f1:Fibonacci,f2:Fibonacci,f3:Fibonacci})
     .then(({f1,f2,f3}) => {
         f3.value = f1.value + f2.value;
-        console.log(`${f3.sequence}:${f3.value}`);
+        sequence[f3.sequence-1] = f3.value;
+        if(sequence.length===sequenceSize) {
+            console.log(sequence);
+            run(false);
+            console.log(getStats());
+        }
     });
 
-assert(Fibonacci({sequence:sequenceSize}));
+new Fibonacci({sequence:sequenceSize});
 
-run({trace:{run:true}});
+run();
