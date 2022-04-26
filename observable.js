@@ -34,6 +34,16 @@ deepEqual.LEFT = 1;
 deepEqual.COMMUTATIVE = 2;
 deepEqual.RIGHT = 3;
 
+const isClass = (value) => {
+    return typeof value === 'function' && (
+        /^\s*class[^\w]+/.test(value.toString()) ||
+
+        // 1. native classes don't have `class` in their name
+        // 2. However, they are globals and start with a capital letter.
+        (globalThis[value.name] === value && /^[A-Z]/.test(value.name))
+    );
+}
+
 let CHANGELISTENER;
 
 const setChangeListener = listener => CHANGELISTENER = listener;
@@ -149,12 +159,12 @@ const eventTypes = {
 };
 const registeredEventTypes = {...eventTypes};
 
-function Observable(target = {}, {noClone, global, observeInstances, trackInstances, partials} = {}) {
+function Observable(target = {}, {noClone, global, observeInstances, trackInstances, partials, withConfidence} = {}) {
     const type = typeof (target);
     if (target.watchlight && (type !== "function" || target.name === target.watchlight.proxy.name)) {
         return noClone ? target : clone(target);
     }
-    const proxy = observableProxy(target, {observeInstances, trackInstances, partials});
+    const proxy = observableProxy(target, {observeInstances, trackInstances, partials,withConfidence});
     if (type === "function" && target.name && (globalThis[target.name] || global)) { // happens for classes, others return string rep of function
         globalThis[target.name] = proxy;
     }
@@ -177,14 +187,16 @@ const observableProxy = (target, {
     trackInstances,
     trackedIndex,
     dependentInstances,
+    withConfidence,
     confidence,
     queryInstances,
     indexNodes,
     partials,
-    listeners = {"*": new Map()},
+    listeners = {"*": new Set()},
     routes = [],
     parents = new Set(),
     onsubscribe = () => Object.create(null),
+    unsubscribe = () => {},
     changeListeners = Object.create(null)
 } = {}) => {
     const watchlight = {
@@ -195,20 +207,23 @@ const observableProxy = (target, {
         queryInstances,
         indexNodes,
         dependentInstances: new Set(),
+        withConfidence,
         confidence: 1,
         partials,
         listeners: {...listeners},
         routes: [...routes],
         parents: new Set([...parents]),
         onsubscribe,
+        unsubscribe,
         changeListeners: {...changeListeners}
     }
-    const proxy = new Proxy(target, {
+    watchlight.routes.isPipe = routes.isPipe;
+    const {proxy,revoke} = Proxy.revocable(target, {
         get(target, property) {
             if(property==="toJSON") {
                 return function toJSON() {
                     const json = target.toJSON ? target.toJSON() : target;
-                    if(json && typeof(json)==="object") json.confidence = watchlight.confidence;
+                    if(json && typeof(json)==="object" && withConfidence) json.confidence = watchlight.confidence;
                     return json;
                 }
             }
@@ -219,11 +234,14 @@ const observableProxy = (target, {
             if (property === "removeEventListener" ) return removeEventListener.bind(proxy); //&& target.removeEventListener
             if (property === "dispatchEvent") return dispatchEvent.bind(proxy);
             if (property === "postMessage") return postMessage.bind(proxy);
+            if(property === "publish") return (...items) => items.forEach((item) => publish(item,proxy));
             if (property === "pipe") return (...functions) => pipe(functions, proxy);
             if (property === "route") return (...functions) => route(functions, proxy);
             if (property === "split") return (...objects) => split(proxy, ...objects);
-            if (property === "subscribe") return (listener) => subscribe(listener, proxy);
-            if (property === "unsubscribe") return (listener) => unsubscribe(listener, proxy);
+            if (property === "subscribe") return (listener,complete,error) => {
+                return complete||error ? subscribe({next:listener,complete,error}, proxy) : subscribe(listener, proxy);
+            }
+            if (property === "unsubscribe") return (listener) => { unsubscribe(listener, proxy); watchlight.unsubscribe(); revoke(); if(target.unsubscribe) target.unsubscribe() }
             if(property === "withOptions") return withOptions.bind(proxy);
             if(property === "confidence") return watchlight.confidence;
             if (watchlight.observeInstances && watchlight.trackInstances) {
@@ -333,12 +351,7 @@ const observableProxy = (target, {
             return true;
         },
         apply(target, thisArg, argsList) {
-            let value,
-                canceled,
-                event = new ObservableEvent({type: "apply", target: proxy, thisArg, argsList:[...argsList]});
-            dispatchEvent.call(proxy, event);
-            canceled ||= event.defaultPrevented;
-            if (canceled) return undefined;
+            let value;
             try {
                 value = target.call(thisArg, ...argsList);
             } catch (e) {
@@ -380,7 +393,7 @@ const observableProxy = (target, {
                     watchlight.queryInstances = _queryInstances.bind(watchlight, index);
                 }
             }
-            provide({target: instance}, proxy);
+            publish({target: instance}, proxy);
             return instance;
         }
     })
@@ -392,10 +405,9 @@ const withOptions = function({confidence}) {
     this.watchlight.confidence = parseFloat(confidence);
 }
 
-
 const addEventListener = function (eventType, listener) {
     if (!(eventType in eventTypes)) throw new TypeError(`Invalid event name: ${eventType}`);
-    return subscribe({listener, eventType, noClone:true}, this);
+    return subscribe({next:listener, eventType, noClone:true}, this);
 };
 
 const clone = (observable) => observableProxy(observable.target, observable.watchlight);
@@ -468,94 +480,122 @@ const postMessage = async function(eventName,options={}) {
     return this.dispatchEvent(new ObservableEvent({type:eventName,...options}));
 };
 
-const dispatchEvent = async function (event) {
+const dispatchEvent = function async (event) {
     Object.defineProperty(event, "currentTarget", {configurable: true, value: this});
-    return provide(event, this);
+    return publish(event, this);
 };
 
 const from = (arg) => {
     const observable = Observable(function* () {
-        for (const item of [...arg]) yield item;
-        yield;
+        for (const item of [...arg]) {
+            yield item;
+        }
+        yield undefined;
     });
-    observable.watchlight.onsubscribe = (target) => {
-        for (const item of target()) provide(item, target);
-    }
     return observable;
 }
 
-const fromAsync = (arg) => {
-    const observable = Observable(function* () {
-        for (const item of [...arg]) yield item;
-        yield;
+const fromEvent = (eventName,...eventEmitters) => {
+    if(eventEmitters.length>1) return eventEmitters.map((eventEmitter) => fromEvent(eventName,eventEmitter));
+    const observable = Observable(eventEmitters[0]);
+    eventEmitters[0].addEventListener(eventName,(event) => {
+        publish(event,observable);
     });
-    observable.watchlight.onsubscribe = async (target) => {
-        for (const item of target()) await provide(await item, target);
-    }
     return observable;
 }
 
-const merge = (...objects) => {
-    const observable = Observable();
-    subscribe({listener: (value) => provide(value, observable), noClone: true}, ...objects);
-    return observable;
+
+const merge = (...observables) => {
+    const o = Observable(),
+        completed = [];
+    observables.forEach((observable) => {
+        observable.subscribe({
+            next(value) {
+                publish(value,o);
+            },
+            complete() {
+                completed.push(observable);
+                if(completed.length===observables.length) {
+                    [...o.watchlight.listeners["*"]].forEach((listener) => {
+                        if(listener.complete) listener.complete();
+                        Object.defineProperty(listener,"completed",{enumerable:false,configurable:false,writable:false,value:true});
+                    })
+                }
+            }
+        })
+    })
+    return o;
 }
 
 const of = (...args) => from(args);
 
-const ofAsync = (...args) => fromAsync(args);
+const partition = (observable,predicate) => {
+    const o1 = Observable(),
+        o2 = Observable();
+    observable.subscribe({
+        next(value) {
+            if(predicate(value)) publish(value,o1)
+            else publish(value,o2);
+        },
+        complete() {
+            [o1,o2].forEach((observable) => {
+                [...observable.watchlight.listeners["*"]].forEach((listener) => {
+                    if(listener.complete) listener.complete();
+                    Object.defineProperty(listener,"completed",{enumerable:false,configurable:false,writable:false,value:true});
+                })
+            })
+        }
+    })
+    return [o1, o2];
+}
 
-const pipe = (functions, ...objects) => {
-    if (objects.length > 1) return objects.map((object) => pipe(functions, object));
-    const observable = Observable(objects[0]),
+const pipe = (functions, ...observables) => {
+    if (observables.length > 1) return observables.map((observable) => pipe(functions, observables));
+    const observable = Observable(observables[0],{noClone:true}),
         watchlight = observable.watchlight;
-    if (watchlight.routes.isPipe) {
-        watchlight.routes[0].push(...functions);
-    } else {
+   if (watchlight.routes.isPipe) {
+       watchlight.routes[0].push(...functions);
+   } else {
         watchlight.routes.push(functions);
         watchlight.routes.isPipe = true;
         Object.freeze(watchlight.routes);
-    }
+   }
     return observable;
 };
 
-const provide = async (eventOrValue, ...objects) => {
-    if (objects.length > 1) return objects.map((object) => provide(eventOrValue, object));
-    const observable = objects[0];
-    if (!observable.watchlight) return; // should not happen, bug elseweher in code
-    let eventType = "*",
-        bubbles;
-    if (eventOrValue && typeof (eventOrValue) === "object") {
-        if (eventOrValue instanceof Event || eventOrValue instanceof ObservableEvent) {
-            eventType = eventOrValue.type;
-            bubbles = eventOrValue.bubbles;
-        }
+const publish = async (item, ...observables) => {
+    if(observables.length>1) return observables.map((observable) => publish(item,observable));
+    const observable = observables[0],
+        watchlight = observable.watchlight,
+        routes = watchlight?.routes || [];
+    if(!watchlight) return; // occurs is sheet, not sure why
+    let result = await item,
+        listeners = [...watchlight.listeners["*"]||[]],
+        isevent;
+    if(item && typeof(item)==="object" && (item instanceof Event || item instanceof ObservableEvent)) {
+        listeners.push(...watchlight.listeners[item.type]||[]);
+        isevent = true;
     }
-    let every = true;
-    const {listeners, routes, parents} = observable.watchlight,
-        nongenericevents = ["subscribe", "unsubscribe","apply"];
-    let result = eventOrValue;
     if (routes.length > 0) {
         for (let i=0; i<routes.length; i++) {
             const route = routes[i];
-            let trynext, childsucceeded;
+            let trynext, childsucceeded, previous;
             for (let j = 0; j < route.length; j++) {
-                result = await route[j](result);
-                if (eventOrValue?.stopImmediate) {
+                result = await route[j](result,observable);
+                if (item?.stopImmediate) {
                     childsucceeded = false;
                     result = null;
                     break;
                 }
                 if (result === undefined) {
                     if(!routes.isPipe) {
-                        if(i<routes.length-1) result = eventOrValue;
+                        if(i<routes.length-1) result = item;
                         break;
                     } else if (!trynext) {
                         trynext = true;
                         continue;
                     }
                     childsucceeded = false;
-                    result = null;
                     break;
                 }
                 if (j === 0) childsucceeded = true;
@@ -563,34 +603,34 @@ const provide = async (eventOrValue, ...objects) => {
             if (childsucceeded) break;
         }
     }
-    for (const [listener, options] of [...(nongenericevents.includes(eventType) ? [] : listeners["*"]), ...(eventType === "*" ? [] : listeners[eventType] || [])]) {
-        if (result == null || eventOrValue?.stopImmediate) {
-            every = false;
-            break;
-        }
-        if (Object.getPrototypeOf(result) === Object.getPrototypeOf(function* () {
-        })) {
-            for (const item of result()) {
-                await listener(item);
+    if(result!==undefined && (!isevent || (item && !item.stop && !item.stopImmediate))) {
+        listeners.every(async (listener) => {
+            if(result && typeof(result)==="object" && result instanceof Error) {
+                if (listener.error) listener.error(result);
+                else throw result;
+            } else {
+                try {
+                    await listener.next(result);
+                } catch (e) {
+                    if (listener.error) listener.error(e);
+                    else throw e;
+                }
             }
-        } else {
-            await listener(result);
+        });
+        if(!isevent || (!item.stop && !item.stopImmediate)) {
+            [...observable.watchlight.parents||[]].every(async (parent) => {
+                await publish(item,parent);
+                return !isevent || !item.stopImmediate
+            })
         }
-        options.count--;
-        if (options.count <= 0) local.unsubscribe(listener, eventType);
-        if (result.stop) break;
     }
-    if (every && bubbles && !eventOrValue?.stop && !eventOrValue?.stopImmediate) [...parents].forEach((parent) => provide(eventOrValue, parent));
-};
+}
 
-const range = (start, end) => {
+const range = (start, end=start) => {
     const observable = Observable(function* () {
         for (let i = start; i <= end; i++) yield i;
         yield;
     });
-    observable.watchlight.onsubscribe = async (target) => {
-        for (const number of target()) provide(number, target);
-    }
     return observable;
 }
 
@@ -619,35 +659,92 @@ const route = (functions, ...objects) => {
 
 const split = (object, ...objects) => {
     objects = subscribe(null, ...objects);
-    object.subscribe((value) => objects.forEach((object) => provide(value, object)));
+    object.subscribe((value) => objects.forEach((object) => publish(value, object)));
     return objects;
 }
 
-const subscribe = (listener, ...objects) => {
-    if (objects.length > 1) return objects.map((object) => subscribe(listener, object));
-    let eventType = "*", noClone;
-    const type = typeof (listener);
-    if (listener && type === "object") {
-        eventType = listener.eventType ? listener.eventType : eventType;
-        noClone = listener.noClone;
-        listener = listener.listener;
-    } else if (type === "string") {
+const subscribe = (listener, ...observables) => {
+    if (observables.length > 1) return observables.map((object) => subscribe(listener, object));
+    let eventType = "*", noClone, type = typeof (listener), observable = observables[0];
+    if(type==="function") {
+        listener = {
+            next: listener
+        }
+    } else if(type==="string") { // deprecate?
         eventType = listener;
-        listener = () => {
-        };
-    } else if (type === "function" && listener.name) {
-        eventType = listener.name;
+        listener = {
+            next: (value) => value
+        }
     }
-    const observable = noClone ? objects[0] : Observable(objects[0]),
+    type = typeof (listener);
+    if(!listener || type!=="object" || typeof(listener.next)!=="function") throw new TypeError(`A subscriber must be a function, string, or object supporting next(value) not ${type}`)
+    if(!listener.noClone || !observable.watchlight) observable = Observable(observable);
+    if(listener.eventType) eventType = listener.eventType;
+    const otype = typeof(observable),
         watchlight = observable.watchlight,
-        listeners = eventType ? watchlight.listeners[eventType] ||= new Map() : null;
-    if (listener && listeners) listeners.set(listener, {});
+        listeners = watchlight.listeners[eventType] ||= new Set();
+    listeners.add(listener);
     if (observable.target.addEventListener) {
-        observable.target.addEventListener(eventType, (event) => dispatchEvent.call(observable, event));
+        const handler = (event) => {
+            publish(event,observable);
+        }
+        observable.target.addEventListener(eventType, handler);
+        // todo if doc disconnect, unsubscribe
+        observable.watchlight.unsubscribe = () => observable.target.removeEventListener(handler);
+    } else if(Object.getPrototypeOf(observable)===Object.getPrototypeOf(function*(){})) {
+        let unsubscribe;
+        setTimeout(async () => {
+            for (const item of observable()) {
+                if (unsubscribe) return;
+                await publish(item, observable);
+            }
+            if(listener.complete) listener.complete();
+            Object.defineProperty(listener,"completed",{enumerable:false,configurable:false,writable:false,value:true});
+        });
+        observable.watchlight.unsubscribe = () => unsubscribe = true;
+    } else if(otype==="function" && !isClass(observable)) {
+        observable.watchlight.unsubscribe = observable(listener);
+    } else if(observable && (otype=="object" || otype==="function")) {
+        const {proxy,revoke} = Proxy.revocable(observable,{
+            set(target,property,value) {
+                const oldValue = target[property];
+                if(value!==oldValue) {
+                    if(oldValue===undefined) {
+                        if(eventType==="*" || eventType==="defineProperty") {
+                            const event = new ObservableEvent({type:"defineProperty",target:observable,property,value});
+                            publish(event,observable).then(() => {
+                                if(!event.preventDefault) {
+                                    target[property] = value;
+                                }
+                            });
+                        }
+                    } else {
+                        if(eventType==="*" || eventType==="change") {
+                            const event = new ObservableEvent({type:"change",target:observable,property,value,oldValue})
+                            publish(event,observable).then(() => {
+                                if(!event.preventDefault) {
+                                    target[property] = value;
+                                }
+                            });
+                        }
+                    }
+                }
+                return true;
+            }
+        });
+        observable = proxy;
+        observable.watchlight.unsubscribe = () => revoke();
+    } else {
+        throw new TypeError(`Observable must be an object or a function not ${typeof(otype)}`)
     }
-    if (watchlight.onsubscribe) watchlight.onsubscribe(observable);
     return observable;
 };
+
+const timestamp = (clock=Date) => {
+    return (value) => {
+        if(value!==undefined) return {value,timestamp:clock.now()}
+    }
+}
 
 const unregisterEventTypes = (...types) => {
     types.forEach((type) => {
@@ -656,51 +753,184 @@ const unregisterEventTypes = (...types) => {
     })
 }
 
-const unsubscribe = (listener, ...objects) => {
-    if (objects.length > 1) return objects.map((object) => unsubscribe(listener, eventType, {asString}, object));
-    let eventType = "*",
-        asString = false;
-    if (listener && typeof (listener) === "object") {
-        eventType = listener.eventType;
-        asString = listener.asString;
-        listener = listener.listener;
+const unsubscribe = (listener, ...observerables) => {
+    if (observerables.length > 1) return observerables.map((observerable) => unsubscribe(listener,observerable));
+    const observerable = observerables[0],
+        type = typeof(listener);
+    if(!observable.watchlight) return;
+    if(type==="string") {
+        const eventType = listener;
+        if(observable.watchlight.listeners[eventType]) {
+            observable.watchlight.listeners[eventType] = new Set();
+        }
+        return;
     }
-    const observable = objects[0],
-        watchlight = observable.watchlight,
-        listeners = [...watchlight.listeners[eventType] || []];
-    listeners.some(([listener]) => {
-        if (asString) {
-            if (subscription + "" === listener + "") watchlight.listeners[eventType].delete(listener);
-            return false;
-        }
-        if (subscription === listener) {
-            watchlight.listeners[eventType].delete(listener);
-            return true;
-        }
-    })
+    if(type==="function" && listener.name) {
+        const eventType = listener.name;
+        const next = listener;
+        [...observable.watchlight.listeners[eventType]||[]].forEach((listener) => {
+            if(listener.next===next) observable.watchlight.listeners[eventType].delete(listener);
+        })
+        return;
+    }
+    if(listener.next.name) {
+        const eventType = listener.name,
+            todelete = listener;
+        [...observable.watchlight.listeners[eventType]||[]].forEach((listener) => {
+            if(listener===todelete) observable.watchlight.listeners[eventType].delete(listener);
+        })
+        return;
+    }
     return observable
 };
 
+const zip = (...observables) => {
+    const o = Observable(),
+        subscriptions = [],
+        values = [];
+    for(let i=0;i<observables.length;i++) {
+        const observable = observables[i];
+        let count = 0,
+            maxcount= Infinity;
+        subscriptions.push(observable.subscribe({
+            next(value) {
+                values[count] ||= [];
+                values[count][i] = value;
+                if (values[count].length===observables.length && values[count].every((item) => item !== undefined)) {
+                    publish(values[count], o);
+                }
+                count++;
+                if(count>=maxcount) {
+                    subscriptions[i].unsubscribe();
+                    subscriptions[i] = null;
+                }
+            },
+            complete() {
+                if(maxcount===Infinity) maxcount = count;
+                subscriptions[i] = null;
+                if(subscriptions.every((item) => item===null)) {
+                    [...o.watchlight.listeners["*"]].forEach((listener) => {
+                        if(listener.complete) listener.complete();
+                        Object.defineProperty(listener,"completed",{enumerable:false,configurable:false,writable:false,value:true});
+                    })
+                }
+            }
+        }))
+    }
+    return o;
+}
+
+const asapScheduler = (delay = 0,clock=Date) => {
+    const start = clock.now(),
+        wait = async () => {
+            return new Promise((resolve) => {
+                if(clock.now()>=start + (typeof(delay)==="number" ? delay : delay.getTime())) resolve(true)
+                else resolve(false);
+            })
+        }
+    return async (value) => {
+        return new Promise(async (resolve) => {
+            let done = wait();
+            while(!await done) {
+                done = wait();
+            }
+            resolve(value)
+        })
+    }
+}
+
+const asyncScheduler = (delay= 0,clock=Date) => {
+    return async (value) => {
+        return new Promise((resolve) => {
+            if(typeof(delay)==="number") {
+                setTimeout(() => resolve(value), delay);
+            }
+            else if(delay && typeof(delay)==="object") {
+                setTimeout(()=> resolve(value),delay.getTime() - clock.now());
+            }
+        })
+    }
+}
+
+const animationFrameScheduler = (delay= 0) => {
+    const start = Date.now(),
+        wait = async () => {
+            return new Promise((resolve) => {
+                if(Date.now()>=start + delay) resolve(true)
+                else resolve(false);
+            })
+        }
+    return async (value) => {
+        let done = wait();
+        const type = typeof(value);
+        while(!await done) {
+            done = wait();
+        }
+        if(type!=="function") throw new TypeError("animationFrameScheduler can only be used with functions not ${type} ${value}")
+        requestAnimationFrame(value);
+        return;
+    }
+}
+
+const observeOn = (scheduler,delay) => {
+    return scheduler(delay);
+}
+
+class Clock {
+    constructor({initialTime=Date.now(),speed=1,run}={}) {
+        this.initialTime = initialTime;
+        this.speed = speed;
+        if(!run) this.stopped  = this.initialTime;
+    }
+    getTime() {
+        return now();
+    }
+    now() {
+        const realtime = Date.now(),
+            expired = (this.stopped || Date.now()) - this.initialTime;
+        return this.initialTime + (expired * this.speed);
+    }
+    reset(toTime) {
+        this.initialTime = toTime || Date.now();
+        if(this.stopped) this.stopped = this.initialTime;
+    }
+    start() {
+        this.stopped = 0;
+    }
+    stop() {
+        this.stopped = Date.now();
+    }
+}
+
 
 export {
+    asapScheduler,
+    asyncScheduler,
+    animationFrameScheduler,
+    Clock,
     deepEqual,
     from,
+    fromEvent,
     merge,
+    Observable,
     observable,
+    observeOn,
     observer,
     of,
+    partition,
     pipe,
-    provide,
+    publish,
     range,
     registerEventTypes,
     registeredEventTypes,
     route,
     split,
     subscribe,
+    timestamp,
     unobserve,
     unsubscribe,
+    zip,
     unregisterEventTypes,
-    Observable,
     getChangeListener,
     setChangeListener
 }

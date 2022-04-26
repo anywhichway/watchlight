@@ -1,4 +1,4 @@
-import {deepEqual} from "./watchlight.js";
+import {deepEqual, asyncScheduler, Observable} from "./observable.js";
 
 const yields = async function*(callback,initial) {
     let hasrun, value;
@@ -7,27 +7,25 @@ const yields = async function*(callback,initial) {
     return value;
 }
 
-
-const count = (counter) => {
-    let counted = 0;
+const avg = (iff) => {
+    let total = 0, count = 0;
     return (value) => {
-        if(value===undefined) return counted;
-        if(counter) counted += counter(value);
-        else counted++;
+        if(value===undefined) return count > 0 ? total/count : 0;
+        total += iff ? (iff(value) ? value : 0) : value;
+        count += iff ? (iff(value) ? 1 : 0) : 1;
     }
 }
 
-const delay = (delay) => {
-    return async (value) => {
-        return new Promise((resolve) => {
-            if(typeof(delay)==="number") {
-                setTimeout(() => resolve(value), delay);
-            }
-            else if(delay && typeof(delay)==="object" && delay instanceof Date) {
-                setTimeout(()=> resolve(value),delay.getTime() - Date.now())
-            }
-        })
+const count = (predicate=()=>{}) => {
+    let counted = 0;
+    return (value,observer) => {
+        if(value===undefined) return counted;
+        if(predicate(value,counted,observer)) counted++;
     }
+}
+
+const delay = (delay,scheduler=asyncScheduler,clock) => {
+    return scheduler ? scheduler(delay,clock) : (value) => value;
 }
 
 const debounceTime = (ms) => {
@@ -51,8 +49,61 @@ const debounceTime = (ms) => {
     }
 }
 
+const distinct = (keySelector) => {
+    const seen = new Set();
+    return (value) => {
+        if(value===undefined) return;
+        const seenvalue = keySelector ? keySelector(value) : value;
+        if(seen.has(seenvalue)) return;
+        seen.add(seenvalue)
+        return value;
+    }
+}
+
+const distinctUntilChanged = (comparator=(previous,current) => previous===current,keySelector) => {
+    let previous;
+    return (value) => {
+        if(value===undefined) return;
+        const current = keySelector ? keySelector(value) : value;
+        if(comparator(previous,current)) return;
+        previous = current;
+        return value;
+    }
+}
+
+const distinctUntilKeyChanged = (key,comparator=(previous,current) => previous===current) => {
+   return distinctUntilChanged(comparator,(value) => value[key]);
+}
+
+
+const elementAt = (index) => {
+    let i = 0;
+    return (value) => {
+        if(i===index) return value;
+        i++;
+    }
+}
+
 const filter = (f) => {
-    return (value) => f(value) ? value : undefined;
+    let count = 0;
+    return (value,observable) => {
+        return f(value,count++,observable) ? value : undefined;
+    }
+}
+
+const first = (f) => {
+    let first, count = 0;
+    return (value,observable) => {
+        if(value===undefined && first===undefined) return new TypeError("first never received a value")
+        if(first!==undefined) return;
+        if(f(value,count++,observable)) {
+            return first = value;
+        }
+    }
+}
+
+const ignoreElements = () => {
+    return () => {};
 }
 
 const map = (map) => {
@@ -64,7 +115,7 @@ const max = (compare) => {
     return (value) => {
         if(value===undefined) return maximum;
         if(compare) maximum = compare(maximum,value);
-        else maximum = maximum===undefined || value > maximum ? value : maximum;
+        else maximum = maximum===undefined || value > maximum ? value : maximum
     }
 }
 
@@ -77,32 +128,90 @@ const min = (compare) => {
     }
 }
 
+const multiple = (count,predicate=() => true) => {
+    let found = [];
+    return (value,observable) => {
+        if(value===undefined) {
+            if(found.length==0) return new TypeError("multiple never received a value");
+            if(found.length<count) return new TypeError(`multiple received less than ${count}`);
+            if(found.length>count) return new TypeError(`multiple received more than ${count}`);
+            return found;
+        }
+        if(predicate(value,found.length-1,observable)) {
+            if(found.length<=count) found.push(value); // save memory, only cache one extra
+        }
+    }
+}
+
+const product = (iff) => {
+    let total = 1;
+    return (value) => {
+        if(value===undefined) return total;
+        total *= iff ? (iff(value) ? value : 1) : value;
+    }
+}
+
 const reduce = (reducer,seed) => {
     let reduced = seed;
     return (value) => {
         if(value===undefined) return reduced;
         if(reduced===undefined) reduced = value;
-        else if(reducer) reduced = reducer(reduced,value);
+        else reduced = reducer(reduced,value);
     }
 }
 
 const scan = (aggregator,seed) => {
-    let aggregate = seed;
+    let accum = seed;
     return (value) => {
-        if(value===undefined) return aggregate;
-        aggregate = aggregator(aggregate);
+        if(value===undefined) return;
+        if(accum===undefined) accum = value;
+        else accum = aggregator(accum,value);
+        return accum;
     }
 }
 
-const skipUntil = (observed,eventName="*") => {
-    let seen;
-    observed.subscribe(eventName,(event) => seen = event);
-    return (value) => seen!=undefined ? value : undefined;
+const single = (predicate=() => true) => {
+    let found, count = 0;
+    return (value,observable) => {
+        if(value===undefined) {
+            if(found===undefined) return new TypeError("single never received a value");
+            return found;
+        }
+        if(predicate(value,count++,observable)) {
+            if(found===undefined) {
+                found = value;
+            } else {
+                found = new TypeError("single received more than one value");
+            }
+        }
+    }
 }
 
-const skipUntilTime = (future) => {
+const skip = (count) => {
+    let counted = 0;
+    return (value) => {
+        counted++;
+        if(counted>count) return value;
+    }
+}
+
+const skipUntil = (observable) => {
+    let seen,
+        subscription = Observable(observable,{noClone:true}).subscribe((value) => seen = value);
+    return (value) => {
+        if(seen!=undefined) {
+            if(subscription) {
+                subscription.unsubscribe();
+                subscription = null;
+            }
+            return value;
+        }
+    }
+}
+
+const skipUntilTime = (future,clock= Date) => {
     const time = typeof (future) === "number" ? future : future.getTime();
-    return (value) => Date.now() >= time ? value : undefined;
+    return (value) => clock.now() >= time ? value : undefined;
 }
 
 const skipWhile = (test) => {
@@ -121,24 +230,35 @@ const sum = (iff) => {
     }
 }
 
-const takeUntil = (observed,eventName="*") => {
-    let seen;
-    observed.subscribe(eventName, (event) => seen = event);
-    return (value) => seen == undefined ? value : undefined;
+const take = (count) => {
+    let counter = 1;
+    return (value) => {
+        if(counter++<=count) return value;
+    }
 }
 
-const takeUntilTime = (future) => {
+const takeUntil = (observable) => {
+    let seen,
+        subscription = Observable(observable,{noClone:true}).subscribe((value) => seen = value);
+    return (value) => {
+        if(seen===undefined) return value;
+        if(subscription) {
+            subscription.unsubscribe();
+            subscription = null;
+        }
+    }
+}
+
+const takeUntilTime = (future,clock= Date) => {
     const time = typeof (future) === "number" ? future : future.getTime();
-    return (value) => Date.now() < time ? value : undefined;
+    return (value) => clock.now() > time ? undefined : value;
 }
 
 const takeWhile = (test) => {
-    let seen, done;
+    let failed;
     return (value) => {
-        if(done) return;
-        if(seen===undefined) seen = test(value);
-        if(seen) return value;
-        done = true;
+        if(!failed && test(value)) return value;
+        failed = true;
     }
 }
 
@@ -160,8 +280,21 @@ const timeThrottle = (ms) => {
     }
 }
 
-export {filter, count, delay, debounceTime, map, max, min, reduce,
-        skipUntil, skipUntilTime, skipWhile,
+const when = (iff,callback) => {
+    return (value) => {
+        if(typeof(iff)==="function" ? iff(value) : value===iff) callback(value);
+        return value;
+    }
+}
+
+export {avg, filter, first, count, elementAt,
+        delay, debounceTime,
+    distinct, distinctUntilChanged, distinctUntilKeyChanged,
+    ignoreElements,
+        map, max, min, multiple,
+        product, reduce,
+    single,
+        skip, skipUntil, skipUntilTime, skipWhile,
         scan, sum,
-        takeFinal, takeUntil, takeUntilTime, takeWhile,
-        timeThrottle, yields }
+        take, takeFinal, takeUntil, takeUntilTime, takeWhile,
+        timeThrottle, when, yields }

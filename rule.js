@@ -224,7 +224,7 @@ const justifies = (tested,conditions,...instances) => {
 }
 
 function ObserverableForRules(target,{global,partials= true}={}) {
-    const observable = Observable(target,{global,observeInstances:true,trackInstances:true,partials});
+    const observable = Observable(target,{global,observeInstances:true,trackInstances:true,partials,withConfidence:true});
     if(typeof(target)==="function") observable.watchlight.retractedInstances = new Set();
     return observable;
 }

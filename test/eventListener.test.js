@@ -32,22 +32,19 @@ test("change", async () => {
     return promise;
 })
 
-test("change - bubble", async () => {
+test("change - bubble", (done) => {
     const object = Observable({person:{name:"joe",age:27}}),
         aPerson = object.person;
-    const promise = new Promise((resolve) => {
-        object.addEventListener("change",({type,target,currentTarget,reactor,property,value,oldValue}) => {
-            expect(target).toBe(aPerson);
-            expect(currentTarget).toBe(aPerson);
-            expect(type).toBe("change");
-            expect(property).toBe("age");
-            expect(value).toBe(30);
-            expect(oldValue).toBe(27);
-            resolve();
-        });
-    })
+    object.addEventListener("change",({type,target,currentTarget,reactor,property,value,oldValue}) => {
+        expect(target).toBe(aPerson);
+        expect(currentTarget).toBe(aPerson);
+        expect(type).toBe("change");
+        expect(property).toBe("age");
+        expect(value).toBe(30);
+        expect(oldValue).toBe(27);
+        done();
+    });
     aPerson.age = 30;
-    return promise;
 })
 
 test("delete", () => {

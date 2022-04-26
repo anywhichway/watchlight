@@ -1,4 +1,4 @@
-<div style="position:fixed;min-width:100%;opacity:1;background:white;margin-bottom:0px;height:1.5em"><a href="https://watchlight.dev">watchlight.dev</a> v1.1.1 beta</div>
+<div style="position:fixed;min-width:100%;opacity:1;background:white;margin-bottom:0px;height:1.5em"><a href="https://watchlight.dev">watchlight.dev</a> v1.1.2 beta</div>
 <div id="TOC" style="position:fixed;top:2em;max-height:97%;height:97%;opacity:1;background:white">
    <div id="header" style="font-weight:bold;margin-top:0px">
      &nbsp;<span id="toggle-button" style="display:none;float:right;font-weight:bold;margin-top:0px">&lt;&lt;</span>
@@ -712,7 +712,7 @@ namedmaryexists = exists(Person({name: "mary"}));
 deepequalexists = exists(Person({name: "mary", age: 27})); 
 ```
 
-#### any rule.then(action:function,{conditions})
+#### any rule.then(action:function)
 
 `action` has the call signature `(data:any)`.
 
@@ -729,9 +729,10 @@ If the `action` returns `undefined`, action processing will cease.
 
 If the `action` returns anything else, it will be used as the input argument to the next action in the chain.
 
-`conditions` is a `Map` subclass with reactive objects accessed by the `rule` as keys and an object with properties and
-values at the time of `rule` firing as the entries. Currently, its sole use is for input
-to `reactiveObject.withConditions`.
+Inside the `action` function you can use:
+
+`this.justifies(justification,conclusion)` where `justification` is an object holding the facts that must remain constant
+for the facts in the conclusion to remain in place. See the `examples/rules/diagnostic-confidence.js`
 
 Returns: the return value of `action`.
 
@@ -748,7 +749,7 @@ Returns: Reactive `true` if the `object` was being tracked, i.e. was not previou
 
 <a id="when"></a>
 
-#### Rule when(condition:function, domain:Objectv [,{priority:number, confidence:float])
+#### Rule when(condition:function, domain:Object [,{priority:number, confidence:float])
 
 The `condition` can be an anonymous or named function. The call signature of `condition` is `(object:Object)` where
 `object` must be an Object with one or more properties. The `condition` MUST return `true` or `false` indicating if the
@@ -757,59 +758,13 @@ members of the `object` satisfy the rule conditions.
 The `domain` MUST be an Object with the same properties as the `object` argument to `condition`. The values of the
 properties MUST be classes or constructors.
 
-`confidence` sets a confidence on a rule or Observable data. This is available to the `justifications` function and also
-via `this.withConfidence` in the `then` postions of a rule.
+`confidence` sets a confidence on a rule or Observable data. This is available to the `this.justifies` function and also
+via `this.withConfidence` in the `then` statements of a rule.
 a `confidence` = minimum confidence of data used to fire the rule * confidence of the rule. You can run the
 example <a href="./examples/rules/diagnostic-confidence.html" target="_tab">diagnostic confidence</a> or view its
 <a href="./examples/rules/diagnostic-confidence.js" target="_tab">source</a>.
 
 Returns: Reactive `Proxy` for `condition`, i.e. a `Rule`.
-
-<a id="whilst"></a>
-
-#### Rule whilst( condition:function, conclusion:function, domain:object, options:Object )
-
-Rules created with `whilst` have a conclusion that is logically dependent on the continued truth of the `condition`.
-
-The constraints on `condition` and `domain` are the same as those for `when`. The additional `conclusion` argument in
-the second position is a function with a call signature that matches that of `condition`. The `conclusion` MUST return
-an object or array of objects of any class. The array returned MUST be a direct Array, not a subclassed Array, i.e. its
-property `constructor`===`Array`. This object or objects are made reactive and asserted to rule memory. They are then
-used as the input argument to the first `action`, i.e. `then` statement.
-
-If you need to get hold of the reactive assertion(s), add a `onassert` to the rule `options`. The function signature
-with get a `ReactorEvent` of the form `{ type:string, source:Rule, target:object|ReactiveObject }`.
-
-The `target` will be a reactive data `Proxy`, i.e. a `ReactiveObject`, if its constructor was made reactive.
-Otherwise, `target` it will be a plain JavaScript instance prior to insertion into working memory.
-
-The listener will be invoked asynchronously, so `preventDefault()` is unlikely to have an impact. Allowing synchronous
-calls and event cancellation in this situation can produce hard to debug code.
-
-Returns: Reactive `Proxy` for `condition`, i.e. a `Rule`.
-
-```javascript
-whilst(
-    function match({person1, person2}) {   // condition
-        return person1.name !== person2.name && not(Combo(person1, person2));
-    },
-    ({person1, person2}) => {
-        return {combo: Combo(person1, person2)}
-    }, // conclusion
-    {person1: Person, person2: Person}, // domain
-    {onassert: ({event, source, target}) => console.log("asserted", source)})
-    .then(({combo}) => { // watch for retraction
-        return combo.addEventListener("retract", () => {
-            console.log("retracted", combo)
-        })
-    })
-    .then((combo) => console.log("A pair!", combo))
-```
-
-The `retract` handler will fire if either person in the `Combo` is deleted or has a name change.
-
-
-
 
 ### Instance Bound Rules
 
@@ -1059,11 +1014,6 @@ Returns an array of all values coercible into numbers from the object based on t
 
 Returns an array of values from the object based on the keys between and including `start` and `end`.
 
-## Other Examples
-
-Look at the <a href="./examples/kitchensink.html" target=_tab>kitchen sink</a> or its
-<a href="./examples/kitchensink.js" target=_tab>source</a>.
-
 ## License
 
 `Watchlight` is dual licensed:
@@ -1077,6 +1027,10 @@ A custom commercial license. Contact syblackwell@anywhichway.com.
 ## Change History
 
 Reverse Chronological Order
+
+2022-04-25 v1.1.2b Optimized `subscribe`, made more conformant with `RxJs`. Deleted kitchensink example since
+there are now many more structured examples and it was out of date with API. Many `RxJs` operators added and unit tested,
+but yet to be documents. This release has seen some performance degradation in rules. Should be able to optimize back in.
 
 2022-04-20 v1.1.1b Modified naming to be more consistent with `RxJs`. Added a range of `RxJs` operators. Corrected
 issue where `bubbles` and `defaultPrevented` were ignored on events.

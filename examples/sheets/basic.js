@@ -23,6 +23,6 @@ sheet.A[2] = 4;
 setTimeout(() => { // let recalculation settle out
     console.log(sheet.A[3].valueOf()); // logs 5
     console.log(sheet.A[3].format()); // logs $5.00
-    console.log(sheet[1][2][1].valueOf()); // logs 6
-    console.log(sheet.B[1].valueOf()); // logs 9
+    console.log(sheet[1][2][1].valueOf()); // logs 4
+    console.log(sheet.B[1].valueOf()); // logs 11
 })
