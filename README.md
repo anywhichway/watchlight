@@ -25,7 +25,7 @@
 </script>
 
 <title>Watchlight: Beyond the UI ... a light weight, comprehensive, reactive framework for business logic.</title>
-<div style="position:fixed;min-width:100%;opacity:1;background:white;margin-bottom:0px;height:1.5em"><a href="https://watchlight.dev">watchlight.dev</a> v1.1.2 beta</div>
+<a href="https://watchlight.dev">watchlight.dev</a>
 <template data-lz:src="lz://components/toc.html" data-lz:tagname="lz-toc"></template>
 <lz-toc></lz-toc>
 
