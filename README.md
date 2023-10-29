@@ -1,12 +1,33 @@
+<script src="https://www.unpkg.com/@anywhichway/lazui"
+   data-lz:usejson="https://esm.sh/json5"
+   autofocus
+   data-lz:userouter="https://esm.sh/hono"
+   data-lz:usehighlighter="https://esm.sh/highlight.js"
+   data-lz:options="{
+      userouter: {
+         importName:'Hono',
+         isClass:true,
+         allowRemote:true,
+         markdownProcessor: {
+            src:'https://esm.sh/markdown-it',
+            call:'render',
+            isClass:true,
+            options: {
+               html:true,
+               linkify:true
+            }
+         }
+      },
+      usehighlighter:{
+         style:'/styles/default.css'
+      }
+   }">
+</script>
+
+<title>Watchlight: Beyond the UI ... a light weight, comprehensive, reactive framework for business logic.</title>
 <div style="position:fixed;min-width:100%;opacity:1;background:white;margin-bottom:0px;height:1.5em"><a href="https://watchlight.dev">watchlight.dev</a> v1.1.2 beta</div>
-<div id="TOC" style="position:fixed;top:2em;max-height:97%;height:97%;opacity:1;background:white">
-   <div id="header" style="font-weight:bold;margin-top:0px">
-     &nbsp;<span id="toggle-button" style="display:none;float:right;font-weight:bold;margin-top:0px">&lt;&lt;</span>
-   </div>
-   <div class="toc" style="border:1px solid grey;margin-right:5px;border-radius:5px;overflow-x:hidden;overflow-y:auto;background:whitesmoke">
-   </div>
-</div>
-<div id="content" style="float:right;padding-top:0px;max-height:100vh;overflow:auto;opacity:1">
+<template data-lz:src="/components/toc.html" data-lz:tagname="lz-toc"></template>
+<lz-toc></lz-toc>
 
 ## Introduction to Watchlight
 
@@ -32,7 +53,7 @@ using a standard JavaScript debugger.
 
 ## Installation
 
-`Watchlight` is provided as a JavaScript module. It can be loaded directly in a modern browser or used directly in
+`Watchlight` is provided a JavaScript modules. It can be loaded directly in a modern browser or used directly in
 <a href="https://nodejs.dev/">NodeJS</a>.
 
 ```shell
@@ -69,7 +90,7 @@ The psuedo-classes include:
 
 ## Observable Objects, Constructors and Functions
 
-The core of `Watchlight` is the psuedo-class `Observable`. Observable objects are reactive, they drive application in
+The core of `Watchlight` is the psuedo-class `Observable`. Observable objects are reactive, they drive applications in
 a non-procedural manner. They can have <a href="#event-listeners">event listeners and subscribers </a> attached, be the 
 subject of <a href="#observers">observers</a>, and be referenced by <a href="#inference-rules">inference rules</a>.
 
@@ -78,7 +99,6 @@ accessed.
 
 If a class is made Observable and `observeInstances:true` is passed as an option, it will return 
 an Observable instance when it is called to create a new instance.
-
 
 ### Reactive Object API
 
@@ -129,7 +149,7 @@ Hello mary
 Hello joe
 ```
 
-Nested property access automatically creates child reactors, changes to which will invoke the observer so long as the
+Nested property access automatically creates child Observables, changes to which will invoke the observer so long as the
 changes are made via navigation through the Observable `user`.
 
 ```javascript
@@ -168,8 +188,8 @@ logs
 
 **`Observer Observer(aFunction:function [,thisArg:object,...args:any])`**
 
-Creates an Observer from `aFunction` you provide. The Observer will be called any time the properties on the objects it
-references change in value. You can also call the Observer directly like it was the original function.
+Creates an Observer from `aFunction` you provide. The Observer will be called any time the properties on the Observable 
+objects it references change in value. You can also call the Observer directly like it was the original function.
 
 Observers are indexed internally by name. Creating an observer from a function with the same name as a previous
 observer will overwrite the old observer. Anonymous functions are not overwritten.
@@ -283,18 +303,19 @@ Reactive objects created using `Observable(target)` can dispatch event listeners
 Event listeners are added via `subscribe`. They can be revoked via `unsubscribe`. If the `target` supports
 `addEventListener`, e.g. if you make a `DOMElement` Observable, then `addEventListener` is also supported. Listeners
 are indexed internally based on their text representation; hence, if you plan to overwrite them,
-you should not use functions that contain closure values and count on the functions being preserved as different event
-handlers.
+you should not use functions that contain closure values and count on the functions being preserved as a different event
+handler.
 
-**`Subscription subscribe(subscription: function|string|ObservableEventDescriptor, target:Observable)`**
+**`Subscription subscribe(subscription: function|string|SubscriptionDescriptor, target:Observable)`**
 
 You will usually pass a function as the value for `subscription` when subscribing. The name of the function should be the event 
 type you wish to subscribe to. If you pass an un-named function, it will be invoked for all events.
 
 Passing a string for `subscription` is only useful for pipelined subscriptions and is covered in more detail elsewhere.
 
-The function or string passed is actually just a shorthand for an `ObservableEventDescriptor` which has the surface
-`{eventType: string, listener: function}`.
+The function or string passed is actually just a shorthand for an `SubscriptionDescriptor` which has the surface
+`{next:function,complete:function,error:function,noClone:boolean}` and conforms to the contract described for 
+[RxJs](https://rxjs.dev/guide/observable).
 
 ```javascript
 class Person {
@@ -309,17 +330,6 @@ const joe = Person({name: "joe", age: 27}); // joe is a reactive object
 subscribe(function change({target,property,value,oldValue}) {
     console.log(`${target.name}'s ${property} is changing from ${oldValue} to ${value}`)
 },joe);
-```
-
-Functions can be made into Observables. When they are, you can subscribe to the invocation.
-
-```javascript
-function helloWorld() {
-    console.log("Hello world!");
-}
-subscribe(function apply({target,thisArg,argsList}) {
-    console.log(`${target.name} is about to execute`);
-},helloWorld);
 ```
 
 You may have noted from the above that subscriptions are notified prior to an activity occuring, this allows
@@ -343,7 +353,7 @@ Only available if the target of the `observableInstance` supports `addEventListe
 Adds a `function` as an event listener on the `eventName`. The listener will receive an `ObservableEvent` when the
 `eventName` occurs on the `observableInstance`, i.e. the listener has the signature `({event,....rest})`.
 
-The `options` argument has the surface `{synchronous,once}`.
+The `options` argument has the surface `{once}`.
 
 Returns: `void`. If you want chaining, use `subscribe`.
 
@@ -394,7 +404,7 @@ bubbling can propagate more widely.
 
 **`void observableEvent.preventDefault()`**
 
-Prevents the event type from occurring. For example, if there is a `change` Subscription (a.k.a. listener) calling
+Prevents the event type from occurring. For example, if there is a `change` Subscription (a.k.a. listener), calling
 `preventDefault` will stop the change from occurring. The event will still bubble.
 
 **`void observableEvent.stopPropagation()`**
@@ -405,7 +415,7 @@ Stops bubbling to parent objects, but all subscribers on the current object will
 
 Stops bubbling when called from a subscription, and all subsequent subscriptions will be blocked.
 
-#### Interface ObservableEventDescriptor
+#### Interface SubscriptionDescriptor
 
 **`{eventType:string, listener:function}`**
 
@@ -494,8 +504,7 @@ subscribe("click" ,observableInstance)
 ```
 
 The function `subscribe` knows to expect an Observable as the second argument. So, unless you need to reference
-your Observable elsewhere, you can shorten the above code and the Observable
-will be automatically created.
+your Observable elsewhere, you can shorten the above code and the Observable will be automatically created.
 
 ```javascript
 registerEventTypes("click");
@@ -547,7 +556,7 @@ Under the hood, `pipe` just creates a single route and then locks the subscripti
 You will find many of the same pipeline operators as provided by RxJs, e.g.
 
 `count`, `debounce`, `delay`, `filter`, `timeThrottle`, `map`, etc. There are also some additional operators, e.g. 
-`sum`, `average`.
+`sum`, `average`, `multiple`.
 Since the list is long and each requires its own explanation, they are provided in a [separate file](./operators.html)
 so that we can move on to inference rules.
 
@@ -561,7 +570,7 @@ satisfied.
 
 To avoid the creation of a special language or the representation of operators like "==" and ">" as strings, the
 inference engine does not use the <a href="https://en.wikipedia.org/wiki/Rete_algorithm">Rete Algorithm</a> or a
-derivative like most rule engines. However, it is small (4K minified/gzipped) and fast. And, this means you can use the
+derivative like most rule engines. However, it is small (6K minified/gzipped) and fast. And, this means you can use the
 JavaScript debugger to step through all of your code as it is written.
 
 `Watchlight` is currently in beta, but tests on an 8 MB Ryzen 4000 5 show that 250,000+ rule tests can be
@@ -1028,6 +1037,8 @@ A custom commercial license. Contact syblackwell@anywhichway.com.
 
 Reverse Chronological Order
 
+2023-10-29 v1.1.3b Converted documentation to use ![lazui](https://github.com/anywhichway/lazui).
+
 2022-04-25 v1.1.2b Optimized `subscribe`, made more conformant with `RxJs`. Deleted kitchensink example since
 there are now many more structured examples and it was out of date with API. Many `RxJs` operators added and unit tested,
 but yet to be documents. This release has seen some performance degradation in rules. Should be able to optimize back in.
@@ -1093,6 +1104,6 @@ value was false. Minor rule performance improvement. Added `observer.withOptions
 2022-03-18 v0.0.2b Documentation updates
 
 2022-03-18 v0.0.1b Initial public release
-</div>
+
 
 
